@@ -1,5 +1,4 @@
-<p align="center"><img src="docs/assets/excido-mark.svg" width="88" alt=""></p>
-<h1 align="center">EXCIDO</h1>
+<p align="center"><img src="docs/assets/excido-banner.jpg" width="640" alt="Excido"></p>
 <p align="center"><a href="README.md">English</a> · <b>Italiano</b></p>
 <p align="center"><a href="https://github.com/NewMediaDesign/excido/actions/workflows/ci.yml"><img src="https://github.com/NewMediaDesign/excido/actions/workflows/ci.yml/badge.svg" alt="CI"></a> <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT"></p>
 

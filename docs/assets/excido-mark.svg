@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="96" height="96" role="img" aria-label="Excido">
-  <style>
-    .b { fill: #0b0c0e; }
-    @media (prefers-color-scheme: dark) { .b { fill: #eceef1; } }
-  </style>
-  <path class="b" d="M3 4 17.8 14.6 28.5 28 14.2 17.6Z"/>
-  <path class="b" d="M3.5 28.5 15.4 14.8 29.5 2.5 18.4 17.2Z"/>
-</svg>
