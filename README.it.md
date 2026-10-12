@@ -4,7 +4,7 @@
 
 Excido è uno strumento locale per scontornare le immagini, basato su [BiRefNet](https://github.com/ZhengPeng7/BiRefNet), lo stato dell'arte nella segmentazione dicotomica ad alta risoluzione (Zheng Peng et al., CAAI AIR 2024). Il modello gira sulla tua GPU o CPU e l'interfaccia si apre nel browser. Le immagini non escono mai dal tuo computer.
 
-<p align="center"><img src="docs/assets/screenshot.jpg" width="100%" alt="App web di Excido: vista prima/dopo di un ciclista con la bici da corsa scontornato dallo sfondo (foto: Zoltan Tasi, Unsplash)"></p>
+<p align="center"><img src="docs/assets/screenshot.jpg" width="100%" alt="App web di Excido: vista affiancata di un ciclista con la bici da corsa scontornato dallo sfondo (foto: Zoltan Tasi, Unsplash)"></p>
 
 - **App web.** Ha uno slider prima/dopo, il ritaglio su scacchiera, le viste maschera e overlay, zoom e pan, cronologia, batch con esportazione ZIP e interfaccia in inglese e italiano.
 - **Tutti i parametri a runtime.** Controlli risoluzione, precisione, dispositivo, soglia, espansione/contrazione della selezione a mezzo pixel, sfumatura, pulizia dei bordi (`refine_foreground`), sfondo e formato ([docs/it/PARAMETRI.md](docs/it/PARAMETRI.md)).
