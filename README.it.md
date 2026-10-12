@@ -7,7 +7,8 @@ Excido è uno strumento locale per scontornare le immagini, basato su [BiRefNet]
 <p align="center"><img src="docs/assets/screenshot.jpg" width="100%" alt="App web di Excido: vista prima/dopo di una bicicletta scontornata"></p>
 
 - **App web.** Ha uno slider prima/dopo, il ritaglio su scacchiera, le viste maschera e overlay, zoom e pan, cronologia, batch con esportazione ZIP e interfaccia in inglese e italiano.
-- **Tutti i parametri a runtime.** Controlli risoluzione, precisione, dispositivo, soglia, espansione/contrazione della selezione a mezzo pixel, pulizia dei bordi (`refine_foreground`), sfondo e formato ([docs/it/PARAMETRI.md](docs/it/PARAMETRI.md)).
+- **Tutti i parametri a runtime.** Controlli risoluzione, precisione, dispositivo, soglia, espansione/contrazione della selezione a mezzo pixel, sfumatura, pulizia dei bordi (`refine_foreground`), sfondo e formato ([docs/it/PARAMETRI.md](docs/it/PARAMETRI.md)).
+- **Pennello per la maschera.** Correggi la selezione a mano: aggiungi o cancella con dimensione e durezza regolabili, con annulla e ripeti. I tratti arrivano in ogni export, PSD compreso.
 - **16 varianti ufficiali di BiRefNet.** Ci sono General, HR, Lite, Dynamic, Matting, Portrait e i modelli del paper. Sette si scaricano durante il setup, le altre con un clic ([docs/it/MODELLI.md](docs/it/MODELLI.md)).
 - **Server MCP.** Claude e gli altri client MCP possono scontornare le immagini per te, dentro una cartella che scegli tu ([docs/it/MCP.md](docs/it/MCP.md)).
 - **Export PSD a livelli.** Il soggetto ha una maschera di livello modificabile, più l'originale nascosto e lo sfondo.
@@ -78,17 +79,23 @@ Gli script `.\run.ps1` e `bash run.sh` avviano l'app allo stesso modo.
 1. **Apri un'immagine.** Clicca un esempio, trascina un file nella finestra, incollalo con <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>V</kbd> oppure indica un URL.
 2. Il modello la elabora e il risultato compare con lo **slider prima/dopo**.
 3. **Regola i parametri a destra.**
-   - Le sezioni **live** (Maschera, Colori del bordo, Sfondo, Esportazione) si aggiornano subito.
+   - Le sezioni **live** (Maschera, Pennello, Colori del bordo, Sfondo, Esportazione) si aggiornano subito.
    - Le sezioni **esegui** (Modello, Risoluzione, Prestazioni) richiedono una nuova esecuzione: il pulsante diventa *Riesegui per applicare*.
-4. **Scarica** il ritaglio (PNG/WebP con trasparenza, oppure un composito), la maschera, oppure un **PSD a livelli** con maschera di livello modificabile.
-5. **Batch.** Nella scheda Batch elabori molte immagini insieme e scarichi uno ZIP.
+4. **Ritocca** dove il modello ha sbagliato. Nel pannello **Pennello** scegli **Aggiungi** o **Cancella** e dipingi sull'immagine.
+5. **Scarica** il ritaglio (PNG/WebP con trasparenza, oppure un composito), la maschera, oppure un **PSD a livelli** con maschera di livello modificabile.
+6. **Batch.** Nella scheda Batch elabori molte immagini insieme e scarichi uno ZIP.
+
+I risultati restano nella **cronologia** a sinistra. La × su una riga elimina quel risultato, e **Svuota cronologia** li elimina tutti dopo una conferma in linea. Sopra l'elenco vedi lo spazio che occupano in `outputs/`.
 
 | Tasto | Azione |
 |---|---|
 | <kbd>1</kbd>–<kbd>5</kbd> | Prima/Dopo, Ritaglio, Maschera, Overlay, Affiancati |
-| <kbd>Spazio</kbd> (tieni premuto) | Mostra l'originale |
+| <kbd>Spazio</kbd> (tieni premuto) | Mostra l'originale (sposta la vista mentre dipingi) |
 | <kbd>F</kbd> / <kbd>0</kbd> | Adatta / 100% |
 | rotella, trascina, doppio clic | Zoom, spostamento, adatta |
+| <kbd>B</kbd> / <kbd>E</kbd> / <kbd>Esc</kbd> | Pennello: aggiungi / cancella / spento |
+| <kbd>[</kbd> / <kbd>]</kbd> | Pennello più piccolo / più grande |
+| <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Maiusc</kbd>+<kbd>Z</kbd> | Annulla / ripeti un tratto |
 | <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Invio</kbd> | Esegui (o avvia il batch) |
 
 L'interfaccia parte in inglese. Il selettore **EN | IT** in alto ricorda la tua scelta.
@@ -101,6 +108,10 @@ uv run excido remove foto/ --out risultati/ --model general-hr
 
 ```bash
 uv run excido remove foto.jpg --background "#ffffff" --format webp
+```
+
+```bash
+uv run excido remove ritratto.jpg --grow 1.5 --feather 2 --psd
 ```
 
 ```bash

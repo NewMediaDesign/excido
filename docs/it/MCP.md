@@ -60,9 +60,9 @@ Metti le foto nella cartella di lavoro e chiedi all'agente di lavorarci. I risul
 |---|---|
 | `workspace_info` | Mostra il percorso della cartella di lavoro e di quella di output, il numero di immagini e le opzioni attive. |
 | `list_images` | Elenca le immagini nella cartella di lavoro o in una sua sottocartella. |
-| `remove_background` | Scontorna un'immagine, con `model`, `resolution`, `max_side`, `precision`, `device`, `mask_mode`, `threshold`, `invert`, `grow` (±px, passi di 0,5), `refine`, `background`, `output_format` e `preview`. Restituisce i percorsi dei file prodotti, un `run_id`, i tempi e `foreground_ratio`. |
+| `remove_background` | Scontorna un'immagine, con `model`, `resolution`, `max_side`, `precision`, `device`, `mask_mode`, `threshold`, `invert`, `grow` (±px, passi di 0,5), `feather` (px), `refine`, `background`, `output_format` e `preview`. Restituisce i percorsi dei file prodotti, un `run_id`, i tempi e `foreground_ratio`. |
 | `remove_background_batch` | Come sopra, per una lista di immagini o una cartella intera. |
-| `recompose` | Cambia maschera o sfondo di un risultato precedente, `grow` compreso, senza rieseguire il modello (veloce). |
+| `recompose` | Cambia maschera o sfondo di un risultato precedente, compresi `grow` e `feather`, senza rieseguire il modello (veloce). |
 | `list_models` | Elenca le 16 varianti: a cosa servono, dimensione, se sono scaricate. |
 | `download_model` | Scarica un modello dal catalogo ufficiale bloccato alle revisioni note. È **disattivato di default**. |
 | `system_info` | Mostra i dispositivi (CUDA, Metal, CPU), la memoria e il modello caricato. |

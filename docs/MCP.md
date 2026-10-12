@@ -60,9 +60,9 @@ Put your photos in the workspace, then ask the agent to work on them. Results ap
 |---|---|
 | `workspace_info` | Shows the workspace path, the output folder, the image count and which options are enabled. |
 | `list_images` | Lists the images in the workspace or one of its subfolders. |
-| `remove_background` | Processes one image, with `model`, `resolution`, `max_side`, `precision`, `device`, `mask_mode`, `threshold`, `invert`, `grow` (±px, 0.5 steps), `refine`, `background`, `output_format` and `preview`. It returns the output paths, a `run_id`, timings and `foreground_ratio`. |
+| `remove_background` | Processes one image, with `model`, `resolution`, `max_side`, `precision`, `device`, `mask_mode`, `threshold`, `invert`, `grow` (±px, 0.5 steps), `feather` (px), `refine`, `background`, `output_format` and `preview`. It returns the output paths, a `run_id`, timings and `foreground_ratio`. |
 | `remove_background_batch` | Same as `remove_background`, for a list of images or a whole folder. |
-| `recompose` | Changes mask or background settings of a previous result, including `grow`, without re-running the model (fast). |
+| `recompose` | Changes mask or background settings of a previous result, including `grow` and `feather`, without re-running the model (fast). |
 | `list_models` | Lists the 16 variants: what each is for, size, and whether it is downloaded. |
 | `download_model` | Downloads a model from the pinned official catalog. It is **disabled by default**. |
 | `system_info` | Shows the devices (CUDA, Metal, CPU), memory and the loaded model. |

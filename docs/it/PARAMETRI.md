@@ -63,12 +63,37 @@ L'autore indica 3,5 GB (FP16) e 4,8 GB (FP32) a 1024², ma si tratta della memor
 | `threshold` | 0–1 | 0,5 | Soglia per `binary`; alzarla rende il soggetto più stretto. |
 | `invert` | sì / no | no | Inverte la maschera: tiene lo sfondo ed elimina il soggetto. |
 | `grow` | −100…+100 px, a passi di 0,5 (1 in modalità binaria) | 0 | Espande (+) o contrae (−) la selezione. I bordi morbidi mantengono il loro profilo e si spostano in blocco, quindi i capelli restano sfumati. 1–3 px tolgono gli aloni dello sfondo o recuperano parti sottili. |
+| `feather` | 0–100 px, a passi di 0,5 | 0 | Sfuma il bordo della maschera con una sfocatura gaussiana di questo raggio. |
 
 Il codice ufficiale non applica soglie: la maschera morbida è l'output nativo di BiRefNet.
+
+L'ordine è fisso: soglia → inversione → espandi/contrai → sfumatura → tratti del pennello.
 
 **Come funziona espandi/contrai.** Applica all'alpha una dilatazione (espandi) o un'erosione (contrai) in scala di grigi. I passi alternano una croce a 4 vicini e un quadrato 3×3, il che approssima un disco: il bordo si sposta della stessa distanza in tutte le direzioni, esattamente 1 px lungo gli assi per `±1`. Un valore a mezzo pixel fonde i due raggi interi più vicini.
 
 Viene applicato dopo soglia e inversione, quindi un valore positivo allarga sempre ciò che viene tenuto. Nell'interfaccia web è uno slider da −25 a +25 px, con i pulsanti −/+, un valore digitabile (anche oltre ±25) e i tasti ↑ ↓ (Maiusc moltiplica il passo per 10). Il doppio clic sullo slider lo azzera.
+
+**Sfumatura.** Il raggio è la sigma della gaussiana, quindi la transizione occupa circa il doppio del raggio su ciascun lato del bordo. Viene applicata dopo espandi/contrai: espandi di qualche pixel e poi sfuma, per avere un bordo morbido che non intacca il soggetto. Da 6 px in su la sfocatura lavora su una maschera ridotta e poi riportata alla dimensione piena, quindi anche 100 px costano una frazione di secondo. Nell'interfaccia web lo slider va da 0 a 25 px; l'API, la CLI (`--feather`) e gli strumenti MCP accettano fino a 100.
+
+## Pennello (live)
+
+Il pennello corregge a mano la selezione dove il modello ha sbagliato: dipingi con **Aggiungi** per recuperare una parte persa, con **Cancella** per togliere un pezzo di sfondo rimasto.
+
+| Impostazione | Valori | Default | Effetto |
+|---|---|---|---|
+| modalità | spento · aggiungi · cancella | spento | Con una modalità attiva, trascinare sull'immagine dipinge invece di spostare la vista. |
+| dimensione | 2–400 px nell'interfaccia (fino a 2000 via API) | 40 | Diametro del pennello in pixel **dell'immagine**, quindi un tratto copre la stessa area a qualsiasi zoom. |
+| durezza | 0–100% | 80% | 100% è un disco netto; valori più bassi sfumano il pennello dal nucleo interno al bordo. |
+
+Scorciatoie da tastiera: <kbd>B</kbd> aggiungi, <kbd>E</kbd> cancella, <kbd>Esc</kbd> spento, <kbd>[</kbd> <kbd>]</kbd> più piccolo/più grande, <kbd>Spazio</kbd>+trascina (o il tasto centrale) sposta la vista mentre dipingi, <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd> annulla, <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Maiusc</kbd>+<kbd>Z</kbd> oppure <kbd>Ctrl</kbd>+<kbd>Y</kbd> ripeti. Per dipingere serve una sola immagine sotto il puntatore, quindi attivando il pennello le viste prima/dopo e affiancate passano all'overlay.
+
+Come vengono conservati i tratti:
+- I tratti si applicano **in ordine, sopra** soglia, inversione, espandi e sfumatura: i più recenti vincono e muovere uno slider non li perde mai.
+- Sono salvati con il risultato (`meta.json`), con annulla e ripeti; **Cancella tratti** li rimuove tutti.
+- Rieseguendo il modello sulla stessa immagine (per esempio con un altro modello o un'altra risoluzione) **i tratti vengono riportati**.
+- Arrivano in tutti gli output: ritaglio, maschera, overlay e PSD a livelli.
+
+Via API, `POST /api/runs/{id}/edits` accetta `{"op": "add", "stroke": {"mode": "add" | "erase", "size": 40, "hardness": 0.8, "points": [[x, y], …]}}`, oppure `{"op": "undo" | "redo" | "clear"}`. Le coordinate sono in pixel dell'immagine originale; un tratto contiene al massimo 20.000 punti.
 
 ## Colori del bordo: `refine_foreground` (live)
 

@@ -55,8 +55,8 @@ flowchart LR
    - esegue `model(x)[-1].sigmoid()`;
    - riporta la maschera alla dimensione originale.
 4. **Salvataggio.** `RunStore.create` salva l'originale e `mask_raw.npy` (float16) in `outputs/runs/<id>/`.
-5. **Rendering.** `render` scrive `mask.png`, il ritaglio o composito, `overlay.jpg`, `thumb.png` e `meta.json`.
-6. **Modifiche live.** Una modifica a un parametro *live* chiama `POST /api/runs/{id}/postprocess`, che ripete solo il passo 5.
+5. **Rendering.** `final_alpha` applica i parametri della maschera (soglia, inversione, espandi/contrai, sfumatura) e poi i tratti del pennello del run. Quindi `render` scrive `mask.png`, il ritaglio o composito, `overlay.jpg`, `thumb.png` e `meta.json`, che conserva anche i tratti.
+6. **Modifiche live.** Una modifica a un parametro *live* chiama `POST /api/runs/{id}/postprocess`, che ripete solo il passo 5. Ogni tratto del pennello, annulla o ripeti chiama `POST /api/runs/{id}/edits`, che ripete anch'esso solo il passo 5. Rieseguendo il modello sulla stessa immagine (`source=run:<id>`) i tratti vengono copiati nel nuovo run.
 
 ## API
 
@@ -71,8 +71,11 @@ La documentazione interattiva è su <http://127.0.0.1:7860/api/docs>.
 | GET | `/api/examples` | Esempi ufficiali e cartella galleria. |
 | POST | `/api/segment` | Riceve in multipart `file`, `url` o `source`, più `params` e `post` (JSON). Restituisce il run. |
 | POST | `/api/runs/{id}/postprocess` | Rifà il rendering con nuovi parametri `post`. |
+| POST | `/api/runs/{id}/edits` | Cronologia del pennello: `{"op": "add", "stroke": {…}}`, `undo`, `redo` o `clear`, più il `post` corrente. Restituisce il run aggiornato con `edits_count` e `redo_count`. |
 | GET | `/api/runs/{id}/psd?lang=it` | PSD a livelli (soggetto + maschera di livello, originale nascosto, sfondo), generato da `excido/psd_export.py` con psd-tools. |
 | GET | `/api/runs` | Elaborazioni recenti, per la cronologia. |
+| DELETE | `/api/runs/{id}` · `/api/runs` | Elimina un run, o tutti, da `outputs/runs/`. |
+| GET | `/api/storage` | Spazio occupato e numero dei run salvati. |
 | POST | `/api/backgrounds` | Carica un'immagine di sfondo e restituisce `bg_image_id`. |
 | POST | `/api/batch` · GET `/api/jobs/{id}` | Job batch e relativo avanzamento; lo ZIP finisce in `outputs/batch/<job>/`. |
 | POST/GET | `/mcp` | Endpoint MCP Streamable HTTP (vedi [MCP.md](MCP.md)). |

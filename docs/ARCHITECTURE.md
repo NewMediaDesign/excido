@@ -55,8 +55,8 @@ flowchart LR
    - runs `model(x)[-1].sigmoid()`;
    - resizes the mask back to the original size.
 4. **Storage.** `RunStore.create` stores the original and `mask_raw.npy` (float16) in `outputs/runs/<id>/`.
-5. **Rendering.** `render` writes `mask.png`, the cutout or composite, `overlay.jpg`, `thumb.png` and `meta.json`.
-6. **Live changes.** A change to a *live* setting calls `POST /api/runs/{id}/postprocess`, which repeats only step 5.
+5. **Rendering.** `final_alpha` applies the mask settings (threshold, invert, grow/shrink, feather) and then the run's brush strokes. `render` then writes `mask.png`, the cutout or composite, `overlay.jpg`, `thumb.png` and `meta.json`, which also keeps the strokes.
+6. **Live changes.** A change to a *live* setting calls `POST /api/runs/{id}/postprocess`, which repeats only step 5. Each brush stroke, undo or redo calls `POST /api/runs/{id}/edits`, which also repeats only step 5. Re-running the model on the same image (`source=run:<id>`) copies the strokes to the new run.
 
 ## API
 
@@ -71,8 +71,11 @@ Interactive docs are at <http://127.0.0.1:7860/api/docs>.
 | GET | `/api/examples` | Official samples and the gallery folder. |
 | POST | `/api/segment` | Takes multipart `file`, `url` or `source`, plus `params` and `post` (JSON). Returns the run. |
 | POST | `/api/runs/{id}/postprocess` | Re-renders with new `post` settings. |
+| POST | `/api/runs/{id}/edits` | Brush history: `{"op": "add", "stroke": {…}}`, `undo`, `redo` or `clear`, plus the current `post`. Returns the re-rendered run with `edits_count` and `redo_count`. |
 | GET | `/api/runs/{id}/psd?lang=en` | Layered PSD (subject + layer mask, hidden original, background), built by `excido/psd_export.py` with psd-tools. |
 | GET | `/api/runs` | Recent runs, for the history. |
+| DELETE | `/api/runs/{id}` · `/api/runs` | Deletes one run, or all of them, from `outputs/runs/`. |
+| GET | `/api/storage` | Size and count of the stored runs. |
 | POST | `/api/backgrounds` | Uploads a background image and returns `bg_image_id`. |
 | POST | `/api/batch` · GET `/api/jobs/{id}` | Batch job and its progress; the ZIP goes in `outputs/batch/<job>/`. |
 | POST/GET | `/mcp` | MCP Streamable HTTP endpoint (see [MCP.md](MCP.md)). |
