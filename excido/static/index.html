@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Excido</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b0c0e'/%3E%3Cpath d='M6 7 17.6 15 26 25.5 14.6 17.4Z M6 26 15.6 15.2 27 5.5 18 17Z' fill='%23eceef1'/%3E%3C/svg%3E">
+  <link rel="preload" href="/static/fonts/Michroma-latin-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/Geist-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script>
+    // Apply the saved theme before first paint (no flash).
+    try { const t = localStorage.getItem("excido.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}
+  </script>
+</head>
+<body>
+<div class="app">
+  <!-- ───────────── Top bar ───────────── -->
+  <header class="topbar">
+    <div class="brand">
+      <!-- Pictogram: two steel blades crossing. -->
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <defs>
+          <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" style="stop-color: var(--steel-1)"/>
+            <stop offset="1" style="stop-color: var(--steel-2)"/>
+          </linearGradient>
+        </defs>
+        <path class="blade" d="M3 4 17.8 14.6 28.5 28 14.2 17.6Z"/>
+        <path class="blade" d="M3.5 28.5 15.4 14.8 29.5 2.5 18.4 17.2Z"/>
+        <path class="glint" d="M29.5 2.5 23.6 8.6 24.3 7.4Z"/>
+      </svg>
+      <div class="brand-text"><strong>Excido</strong></div>
+    </div>
+
+    <nav class="tabs" role="tablist" data-i18n-aria="tabs.label">
+      <button id="tab-single" role="tab" aria-selected="true" data-view="single" data-i18n="tab.single">Single</button>
+      <button id="tab-batch" role="tab" aria-selected="false" data-view="batch" data-i18n="tab.batch">Batch</button>
+    </nav>
+
+    <div class="status">
+      <span class="chip" id="chip-device" data-i18n-title="chip.device.title"><i class="dot"></i><span>…</span></span>
+      <span class="chip" id="chip-vram" data-i18n-title="chip.memory.title"><span>—</span></span>
+      <span class="chip" id="chip-model" data-i18n-title="chip.model.title"><span data-i18n="chip.model.none">no model in memory</span></span>
+      <button class="lang-btn" id="lang-toggle" data-i18n-title="lang.title"><span data-lang="en">EN</span><span data-lang="it">IT</span></button>
+      <button class="icon-btn" id="theme-toggle" aria-label="Theme">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18V3z" fill="currentColor"/><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ───────────── Left column: sources ───────────── -->
+  <aside class="sidebar" data-i18n-aria="source.label">
+    <section class="side-block">
+      <label class="dropzone" id="dropzone" for="file-input">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span data-i18n-html="source.open"></span>
+      </label>
+      <input type="file" id="file-input" accept="image/*" hidden>
+      <form class="url-row" id="url-form">
+        <input type="url" id="url-input" data-i18n-placeholder="source.url.placeholder" data-i18n-aria="source.url.label">
+        <button type="submit" class="btn btn-quiet" id="url-go" data-i18n="source.url.go">Open</button>
+      </form>
+    </section>
+
+    <section class="side-block grow">
+      <h2 class="side-title" data-i18n="side.examples">Examples</h2>
+      <div id="examples" class="examples"></div>
+      <h2 class="side-title" data-i18n="side.history">History</h2>
+      <div id="history" class="history"><p class="empty" data-i18n="history.empty"></p></div>
+    </section>
+  </aside>
+
+  <!-- ───────────── Center: workspace ───────────── -->
+  <main class="workspace">
+    <!-- Single view -->
+    <section id="view-single" class="view">
+      <div class="toolbar">
+        <div class="seg" role="radiogroup" data-i18n-aria="view.label" id="view-modes">
+          <button data-mode="compare" aria-checked="true" role="radio" data-i18n="view.compare" data-i18n-title="view.compare.title"></button>
+          <button data-mode="cutout" role="radio" data-i18n="view.cutout" data-i18n-title="view.cutout.title"></button>
+          <button data-mode="mask" role="radio" data-i18n="view.mask" data-i18n-title="view.mask.title"></button>
+          <button data-mode="overlay" role="radio" data-i18n="view.overlay" data-i18n-title="view.overlay.title"></button>
+          <button data-mode="side" role="radio" data-i18n="view.side" data-i18n-title="view.side.title"></button>
+        </div>
+        <div class="toolbar-right">
+          <span class="busy" id="post-busy" hidden data-i18n="busy.updating"></span>
+          <div class="zoom">
+            <button class="icon-btn" id="zoom-out" data-i18n-title="zoom.out" data-i18n-aria="zoom.out">−</button>
+            <button class="zoom-value" id="zoom-value" data-i18n-title="zoom.toggle">100%</button>
+            <button class="icon-btn" id="zoom-in" data-i18n-title="zoom.in" data-i18n-aria="zoom.in">+</button>
+          </div>
+          <a class="btn btn-quiet" id="dl-mask" download aria-disabled="true" data-i18n="dl.mask"></a>
+          <a class="btn btn-quiet" id="dl-psd" download aria-disabled="true" data-i18n-title="dl.psd.title">PSD</a>
+          <a class="btn btn-primary" id="dl-cutout" download aria-disabled="true" data-i18n-title="dl.cutout">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span data-i18n="dl.cutout"></span>
+          </a>
+        </div>
+      </div>
+
+      <div class="stage" id="stage" tabindex="0" data-i18n-aria="stage.label">
+        <div class="frame" id="frame"></div>
+        <div class="stage-empty" id="stage-empty">
+          <p class="stage-empty-title" data-i18n="stage.empty.title"></p>
+          <p data-i18n-html="stage.empty.body"></p>
+        </div>
+        <div class="stage-loading" id="stage-loading" hidden>
+          <div class="spinner"></div><p id="loading-text"></p>
+        </div>
+        <div class="peek-badge" id="peek-badge" hidden data-i18n="stage.peek"></div>
+      </div>
+
+      <footer class="metrics" id="metrics">
+        <span class="metric-empty" data-i18n="metrics.empty"></span>
+      </footer>
+    </section>
+
+    <!-- Batch view -->
+    <section id="view-batch" class="view" hidden>
+      <div class="toolbar">
+        <div class="batch-actions">
+          <label class="btn btn-quiet" for="batch-input" data-i18n="batch.addFiles"></label>
+          <input type="file" id="batch-input" accept="image/*" multiple hidden>
+          <button class="btn btn-quiet" id="batch-examples" data-i18n="batch.addExamples"></button>
+          <button class="btn btn-quiet" id="batch-clear" data-i18n="batch.clear"></button>
+        </div>
+        <div class="toolbar-right">
+          <span class="batch-count" id="batch-count"></span>
+          <a class="btn btn-primary" id="batch-zip" download aria-disabled="true" data-i18n="batch.zip"></a>
+        </div>
+      </div>
+      <div class="batch-body" id="batch-drop">
+        <div class="progress" id="batch-progress" hidden><div class="progress-bar"></div><span class="progress-label"></span></div>
+        <div class="batch-grid" id="batch-grid"></div>
+        <div class="stage-empty" id="batch-empty">
+          <p class="stage-empty-title" data-i18n="batch.empty.title"></p>
+          <p data-i18n="batch.empty.body"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ───────────── Right column: settings ───────────── -->
+  <aside class="inspector" data-i18n-aria="insp.label">
+    <div class="inspector-head">
+      <h2 data-i18n="insp.title">Settings</h2>
+      <button class="link-btn" id="reset-params" data-i18n="insp.reset"></button>
+    </div>
+
+    <div class="inspector-scroll">
+      <!-- Model -->
+      <details class="group" open>
+        <summary><span data-i18n="g.model"></span> <span class="tag-run" data-i18n="tag.run" data-i18n-title="tag.run.title"></span></summary>
+        <div class="field">
+          <label for="p-model" data-i18n="f.variant"></label>
+          <select id="p-model"></select>
+        </div>
+        <div class="model-card" id="model-card"></div>
+      </details>
+
+      <!-- Resolution -->
+      <details class="group" open>
+        <summary><span data-i18n="g.resolution"></span> <span class="tag-run" data-i18n="tag.run" data-i18n-title="tag.run.title"></span></summary>
+        <div class="seg seg-full" role="radiogroup" id="p-resolution">
+          <button role="radio" data-value="auto" data-i18n="res.auto"></button>
+          <button role="radio" data-value="custom" data-i18n="res.custom"></button>
+          <button role="radio" data-value="original" data-i18n="res.original"></button>
+        </div>
+        <p class="hint" id="res-hint"></p>
+        <div class="res-custom" id="res-custom">
+          <div class="field-row">
+            <div class="field"><label for="p-width" data-i18n="res.width"></label><input type="number" id="p-width" min="256" max="4096" step="32"></div>
+            <span class="times">×</span>
+            <div class="field"><label for="p-height" data-i18n="res.height"></label><input type="number" id="p-height" min="256" max="4096" step="32"></div>
+          </div>
+          <div class="presets" id="res-presets">
+            <button data-w="512" data-h="512">512²</button>
+            <button data-w="1024" data-h="1024">1024²</button>
+            <button data-w="2048" data-h="2048">2048²</button>
+            <button data-w="2560" data-h="1440">2560×1440</button>
+          </div>
+        </div>
+        <div class="field" id="res-maxside">
+          <label for="p-max_side"><span data-i18n="res.maxSide"></span> <output id="o-max_side"></output></label>
+          <input type="range" id="p-max_side" min="256" max="4096" step="32">
+        </div>
+      </details>
+
+      <!-- Performance -->
+      <details class="group">
+        <summary><span data-i18n="g.performance"></span> <span class="tag-run" data-i18n="tag.run" data-i18n-title="tag.run.title"></span></summary>
+        <div class="field">
+          <span class="label" data-i18n="perf.device"></span>
+          <div class="seg seg-full" role="radiogroup" id="p-device"></div>
+        </div>
+        <div class="field">
+          <span class="label" data-i18n="perf.precision"></span>
+          <div class="seg seg-full" role="radiogroup" id="p-precision">
+            <button role="radio" data-value="fp16" data-i18n-title="prec.fp16.title">FP16</button>
+            <button role="radio" data-value="bf16" data-i18n-title="prec.bf16.title">BF16</button>
+            <button role="radio" data-value="fp32" data-i18n-title="prec.fp32.title">FP32</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="p-matmul_precision" data-i18n="perf.matmul"></label>
+          <select id="p-matmul_precision">
+            <option value="high" data-i18n="perf.matmul.high"></option>
+            <option value="highest" data-i18n="perf.matmul.highest"></option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="p-batch_size"><span data-i18n="perf.batch"></span> <output id="o-batch_size"></output></label>
+          <input type="range" id="p-batch_size" min="1" max="8" step="1">
+        </div>
+        <label class="toggle"><input type="checkbox" id="p-oom_cpu"><span data-i18n="perf.oom"></span></label>
+        <label class="toggle"><input type="checkbox" id="p-keep_loaded"><span data-i18n="perf.keep"></span></label>
+        <div class="field">
+          <label for="p-mask_interp" data-i18n="perf.interp"></label>
+          <select id="p-mask_interp">
+            <option value="bilinear" data-i18n="interp.bilinear"></option>
+            <option value="bicubic" data-i18n="interp.bicubic"></option>
+            <option value="lanczos" data-i18n="interp.lanczos"></option>
+          </select>
+        </div>
+      </details>
+
+      <!-- Mask -->
+      <details class="group" open>
+        <summary><span data-i18n="g.mask"></span> <span class="tag-live" data-i18n="tag.live" data-i18n-title="tag.live.title"></span></summary>
+        <div class="seg seg-full" role="radiogroup" id="q-mask_mode">
+          <button role="radio" data-value="soft" data-i18n="mask.soft" data-i18n-title="mask.soft.title"></button>
+          <button role="radio" data-value="binary" data-i18n="mask.binary" data-i18n-title="mask.binary.title"></button>
+        </div>
+        <div class="field" id="threshold-field">
+          <label for="q-threshold"><span data-i18n="mask.threshold"></span> <output id="o-threshold"></output></label>
+          <input type="range" id="q-threshold" min="0" max="1" step="0.01">
+        </div>
+        <label class="toggle"><input type="checkbox" id="q-invert"><span data-i18n="mask.invert"></span></label>
+        <div class="field" id="grow-field">
+          <div class="label grow-head">
+            <label for="q-grow" data-i18n="mask.grow"></label>
+            <span class="stepper">
+              <button type="button" class="nudge" id="grow-minus" data-i18n-title="mask.grow.less" data-i18n-aria="mask.grow.less">−</button>
+              <input type="text" inputmode="decimal" id="q-grow-num" autocomplete="off" spellcheck="false" data-i18n-aria="mask.grow" data-i18n-title="mask.grow.keys">
+              <span class="unit">px</span>
+              <button type="button" class="nudge" id="grow-plus" data-i18n-title="mask.grow.more" data-i18n-aria="mask.grow.more">+</button>
+            </span>
+          </div>
+          <input type="range" id="q-grow" min="-25" max="25" step="0.5" data-i18n-title="mask.grow.reset">
+          <div class="range-scale" aria-hidden="true"><span>−25</span><span>0</span><span>+25</span></div>
+          <p class="hint" data-i18n="mask.grow.hint"></p>
+        </div>
+      </details>
+
+      <!-- Edge colors -->
+      <details class="group">
+        <summary><span data-i18n="g.edges"></span> <span class="tag-live" data-i18n="tag.live" data-i18n-title="tag.live.title"></span></summary>
+        <label class="toggle"><input type="checkbox" id="q-refine"><span data-i18n="edges.refine"></span></label>
+        <div class="field">
+          <label for="q-refine_r1"><span data-i18n="edges.r1"></span> <output id="o-refine_r1"></output></label>
+          <input type="range" id="q-refine_r1" min="1" max="255" step="1">
+        </div>
+        <div class="field">
+          <label for="q-refine_r2"><span data-i18n="edges.r2"></span> <output id="o-refine_r2"></output></label>
+          <input type="range" id="q-refine_r2" min="1" max="63" step="1">
+        </div>
+        <p class="hint" data-i18n="edges.hint"></p>
+      </details>
+
+      <!-- Background -->
+      <details class="group" open>
+        <summary><span data-i18n="g.background"></span> <span class="tag-live" data-i18n="tag.live" data-i18n-title="tag.live.title"></span></summary>
+        <div class="seg seg-full" role="radiogroup" id="q-background">
+          <button role="radio" data-value="transparent" data-i18n="bg.transparent"></button>
+          <button role="radio" data-value="color" data-i18n="bg.color"></button>
+          <button role="radio" data-value="blur" data-i18n="bg.blur"></button>
+          <button role="radio" data-value="image" data-i18n="bg.image"></button>
+        </div>
+        <div class="bg-opt" id="bg-color-opt">
+          <div class="swatches" id="swatches">
+            <button data-color="#ffffff" style="--sw:#ffffff" data-i18n-title="sw.white"></button>
+            <button data-color="#000000" style="--sw:#000000" data-i18n-title="sw.black"></button>
+            <button data-color="#808080" style="--sw:#808080" data-i18n-title="sw.grey"></button>
+            <button data-color="#00b140" style="--sw:#00b140" data-i18n-title="sw.green"></button>
+            <button data-color="#0047bb" style="--sw:#0047bb" data-i18n-title="sw.blue"></button>
+            <input type="color" id="q-bg_color" data-i18n-aria="bg.customColor">
+          </div>
+        </div>
+        <div class="bg-opt field" id="bg-blur-opt">
+          <label for="q-bg_blur"><span data-i18n="bg.blurRadius"></span> <output id="o-bg_blur"></output></label>
+          <input type="range" id="q-bg_blur" min="1" max="100" step="1">
+        </div>
+        <div class="bg-opt" id="bg-image-opt">
+          <label class="btn btn-quiet btn-block" for="bg-input" data-i18n="bg.pick"></label>
+          <input type="file" id="bg-input" accept="image/*" hidden>
+          <div class="bg-preview" id="bg-preview" hidden></div>
+        </div>
+      </details>
+
+      <!-- Export -->
+      <details class="group">
+        <summary><span data-i18n="g.export"></span> <span class="tag-live" data-i18n="tag.live" data-i18n-title="tag.live.title"></span></summary>
+        <div class="seg seg-full" role="radiogroup" id="q-export_format">
+          <button role="radio" data-value="png">PNG</button>
+          <button role="radio" data-value="webp" data-i18n="exp.webp"></button>
+        </div>
+        <p class="hint" data-i18n="exp.hint"></p>
+      </details>
+
+      <!-- Technical details -->
+      <details class="group">
+        <summary><span data-i18n="g.tech"></span></summary>
+        <dl class="tech">
+          <dt data-i18n="tech.pre"></dt><dd data-i18n="tech.pre.v"></dd>
+          <dt data-i18n="tech.out"></dt><dd data-i18n-html="tech.out.v"></dd>
+          <dt data-i18n="tech.constraint"></dt><dd data-i18n="tech.constraint.v"></dd>
+          <dt data-i18n="tech.backbone"></dt><dd data-i18n="tech.backbone.v"></dd>
+          <dt data-i18n="tech.hidden"></dt><dd data-i18n-html="tech.hidden.v"></dd>
+        </dl>
+      </details>
+    </div>
+
+    <div class="inspector-foot">
+      <button class="btn btn-run" id="run-btn">
+        <span id="run-label"></span>
+        <kbd class="mod-key">Ctrl</kbd><kbd>↵</kbd>
+      </button>
+      <p class="run-sub" id="run-sub"></p>
+    </div>
+  </aside>
+</div>
+
+<div class="drop-overlay" id="drop-overlay" hidden><div data-i18n="drop.release"></div></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+# Python / tooling
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Data downloaded or produced at runtime (see `excido setup`)
+models/
+outputs/
+examples/
+
+# Your own test images (shown in the app's second gallery) — never published
+demo/
+
+# Local editor / agent settings
+.claude/
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

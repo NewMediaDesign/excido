@@ -1,0 +1,29 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, what you got instead. Screenshots welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: system
+    attributes:
+      label: System
+      description: Paste the output of http://127.0.0.1:7860/api/system (or `uv run excido --version` plus OS, GPU and driver).
+      render: json
+    validations:
+      required: true
+  - type: input
+    id: settings
+    attributes:
+      label: Model and settings
+      placeholder: "general-hr, resolution auto, fp16, cuda"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Terminal output
+      render: text
