@@ -4,7 +4,8 @@
 
 Excido is a local background-removal studio built on [BiRefNet](https://github.com/ZhengPeng7/BiRefNet), the state of the art in high-resolution dichotomous image segmentation (Zheng Peng et al., CAAI AIR 2024). The model runs on your own GPU or CPU and the interface opens in your browser. Your images never leave your computer.
 
-<p align="center"><img src="docs/assets/screenshot.jpg" width="100%" alt="Excido web app: side-by-side view of a cyclist and a road bike cut out from the background (photo: Zoltan Tasi, Unsplash)"></p>
+<p align="center"><img src="docs/assets/screenshot.jpg" width="100%" alt="Excido web app: before/after view of a cyclist and a road bike cut out from the background (photo: Zoltan Tasi, Unsplash)"></p>
+<p align="center"><sub>Photo by <a href="https://unsplash.com/@zoltantasi?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Zoltan Tasi</a> on <a href="https://unsplash.com/photos/TsB03tz5030?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Unsplash</a></sub></p>
 
 - **Web app.** It has a before/after slider, a cutout on a checkerboard, mask and overlay views, zoom and pan, history, batch processing with ZIP export, and an English/Italian interface.
 - **Every runtime setting.** You control resolution, precision, device, threshold, grow/shrink of the selection in half-pixel steps, feather, edge clean-up (`refine_foreground`), background and export format ([docs/PARAMETERS.md](docs/PARAMETERS.md)).

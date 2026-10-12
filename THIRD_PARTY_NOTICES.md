@@ -75,8 +75,8 @@ authors and are used only for local testing; they are not included in this repos
 
 ## README screenshot
 
-The photo in `docs/assets/screenshot.jpg` is by Zoltan Tasi, published on Unsplash
-(<https://unsplash.com/photos/TsB03tz5030>) under the
+The photo in `docs/assets/screenshot.jpg` is by [Zoltan Tasi](https://unsplash.com/@zoltantasi),
+published on Unsplash (<https://unsplash.com/photos/TsB03tz5030>) under the
 [Unsplash License](https://unsplash.com/license).
 
 ## Python dependencies
