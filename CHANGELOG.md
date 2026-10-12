@@ -20,6 +20,14 @@ All notable changes to this project are documented here. The format follows
   - The disk space used by `outputs/` is shown above the list.
 - **New API endpoints.** `POST /api/runs/{id}/edits`, `DELETE /api/runs/{id}`, `DELETE /api/runs` and `GET /api/storage`.
 
+### Changed
+
+- New README screenshot, made with a photo by Zoltan Tasi on Unsplash. The credit is in `THIRD_PARTY_NOTICES.md`.
+
+### Fixed
+
+- At startup, the loaded-model chip showed the model id (`general-hr`) instead of its name until the next refresh.
+
 ## [0.1.0] - 2026-10-13
 
 First public version.

@@ -348,6 +348,7 @@ async function refreshModels() {
   }
   renderModelSelect();
   renderModelCard();
+  renderModelChip();
   syncResolutionUI();
   updateRunButton();
 }
@@ -467,17 +468,23 @@ async function refreshSystem() {
     : `${t("chip.cpuOnly")} · ${main.name}`;
   dev.title = `${t("chip.device.title")}: ${main.name}`;
   $("#chip-vram span").textContent = s.memory_total_mb ? `${gpu ? deviceLabel(main.id) : "RAM"} ${fmtGB(s.memory_used_mb)} / ${fmtGB(s.memory_total_mb)}` : `torch ${s.torch}`;
+  renderModelChip();
+  const devButtons = $$("#p-device button").map((b) => b.dataset.value).join();
+  if (devButtons !== ["auto", ...s.devices.map((d) => d.id)].join()) renderDeviceButtons();
+}
+
+/** Loaded-model chip; also redrawn when the catalog arrives, so it shows the label rather than the id. */
+function renderModelChip() {
+  const loaded = state.system?.loaded;
   const mc = $("#chip-model");
-  if (s.loaded) {
-    const m = modelById(s.loaded.model);
+  if (loaded) {
+    const m = modelById(loaded.model);
     mc.classList.add("active");
-    mc.querySelector("span").textContent = `${m?.label || s.loaded.model} · ${deviceLabel(s.loaded.device)} · ${s.loaded.dtype}`;
+    mc.querySelector("span").textContent = `${m?.label || loaded.model} · ${deviceLabel(loaded.device)} · ${loaded.dtype}`;
   } else {
     mc.classList.remove("active");
     mc.querySelector("span").textContent = t("chip.model.none");
   }
-  const devButtons = $$("#p-device button").map((b) => b.dataset.value).join();
-  if (devButtons !== ["auto", ...s.devices.map((d) => d.id)].join()) renderDeviceButtons();
 }
 
 // ───────────────────────── examples and history ─────────────────────────
