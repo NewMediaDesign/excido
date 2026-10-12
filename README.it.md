@@ -202,7 +202,7 @@ uv run ruff check
 uv run ruff format
 ```
 
-La CI esegue lint, test e un'inferenza reale su CPU con il modello Lite, su Windows, Linux e macOS. Vedi [CONTRIBUTING.md](CONTRIBUTING.md).
+La CI esegue lint, test e un'inferenza reale su CPU con il modello Lite, su Windows, Linux e macOS. Vedi [CONTRIBUTING.md](CONTRIBUTING.md) e il [codice di condotta](CODE_OF_CONDUCT.md). I problemi di sicurezza vanno segnalati in privato come spiegato in [SECURITY.md](SECURITY.md).
 
 ## Licenza e crediti
 

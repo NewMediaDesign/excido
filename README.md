@@ -200,7 +200,7 @@ uv run ruff check
 uv run ruff format
 ```
 
-CI runs lint, the test suite and a real CPU inference with the Lite model on Windows, Linux and macOS. See [CONTRIBUTING.md](CONTRIBUTING.md).
+CI runs lint, the test suite and a real CPU inference with the Lite model on Windows, Linux and macOS. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md). Report security problems privately as described in [SECURITY.md](SECURITY.md).
 
 ## License and credits
 
