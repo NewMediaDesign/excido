@@ -23,6 +23,8 @@ import torch.nn.functional as F
 from PIL import Image, ImageFilter
 
 GROW_LIMIT = 100.0  # max |grow| in pixels
+FEATHER_LIMIT = 100.0  # max feather radius in pixels
+BRUSH_LIMIT = 2000  # max brush diameter in pixels
 
 
 @dataclass
@@ -31,6 +33,7 @@ class PostParams:
     threshold: float = 0.5
     invert: bool = False
     grow: float = 0.0  # pixels: > 0 expands the selection, < 0 contracts it
+    feather: float = 0.0  # pixels: Gaussian softening of the mask edge
     refine: bool = True
     refine_r1: int = 90
     refine_r2: int = 6
@@ -46,6 +49,7 @@ class PostParams:
         p.mask_mode = p.mask_mode if p.mask_mode in ("soft", "binary") else "soft"
         p.threshold = float(min(max(float(p.threshold), 0.0), 1.0))
         p.grow = float(min(max(float(p.grow), -GROW_LIMIT), GROW_LIMIT))
+        p.feather = float(min(max(float(p.feather), 0.0), FEATHER_LIMIT))
         p.refine_r1 = int(min(max(int(p.refine_r1), 1), 255))
         p.refine_r2 = int(min(max(int(p.refine_r2), 1), 63))
         p.background = p.background if p.background in ("transparent", "color", "blur", "image") else "transparent"
@@ -60,8 +64,10 @@ class PostParams:
 def apply_mask_ops(mask: np.ndarray, p: PostParams, device: str = "cpu") -> np.ndarray:
     """mask: float32 HxW in [0, 1] -> alpha float32 HxW in [0, 1].
 
-    Order: threshold (binary mode) -> invert -> grow/shrink, so growing always
-    enlarges what is kept, whether that is the subject or (inverted) the background.
+    Order: threshold (binary mode) -> invert -> grow/shrink -> feather, so growing
+    always enlarges what is kept, whether that is the subject or (inverted) the
+    background, and feathering softens the final edge. Brush strokes (see
+    ``paint_strokes``) are applied afterwards, on top of all of this.
     """
     alpha = mask.astype(np.float32, copy=True)
     binary = p.mask_mode == "binary"
@@ -71,7 +77,103 @@ def apply_mask_ops(mask: np.ndarray, p: PostParams, device: str = "cpu") -> np.n
         alpha = 1.0 - alpha
     if p.grow:
         alpha = grow_shrink(alpha, p.grow, device, binary=binary)
+    if p.feather:
+        alpha = feather(alpha, p.feather, device)
     return alpha
+
+
+def _gaussian_kernel(sigma: float, device) -> torch.Tensor:
+    radius = max(1, int(math.ceil(3 * sigma)))
+    x = torch.arange(-radius, radius + 1, dtype=torch.float32, device=device)
+    k = torch.exp(-(x * x) / (2 * sigma * sigma))
+    return k / k.sum()
+
+
+@torch.inference_mode()
+def feather(alpha: np.ndarray, radius: float, device: str = "cpu") -> np.ndarray:
+    """Soften the mask edge with a Gaussian blur of ``radius`` pixels (used as sigma).
+
+    Large radii are computed on a downscaled mask and scaled back up: the result is
+    smooth anyway, and it keeps big feathers fast on the CPU.
+    """
+    if radius <= 0:
+        return alpha
+    x = torch.from_numpy(np.ascontiguousarray(alpha, dtype=np.float32))[None, None].to(device)
+    h, w = x.shape[-2:]
+    factor = max(1, int(radius // 3))
+    if factor > 1:
+        x = F.interpolate(x, size=(max(1, h // factor), max(1, w // factor)), mode="area")
+    k = _gaussian_kernel(radius / factor, x.device)
+    r = k.numel() // 2
+    x = F.conv2d(F.pad(x, (r, r, 0, 0), mode="replicate"), k.view(1, 1, 1, -1))
+    x = F.conv2d(F.pad(x, (0, 0, r, r), mode="replicate"), k.view(1, 1, -1, 1))
+    if factor > 1:
+        x = F.interpolate(x, size=(h, w), mode="bilinear", align_corners=False)
+    return x[0, 0].clamp_(0, 1).cpu().numpy()
+
+
+# ---------------------------------------------------------------------- brush strokes
+
+
+def _segment_coverage(xs: np.ndarray, ys: np.ndarray, a, b, radius: float, hardness: float) -> np.ndarray:
+    """Brush coverage (0-1) of pixel centers (xs, ys) for a round brush dragged from a to b."""
+    ax, ay = a
+    bx, by = b
+    dx, dy = bx - ax, by - ay
+    length2 = dx * dx + dy * dy
+    if length2 == 0:
+        d = np.hypot(xs - ax, ys - ay)
+    else:
+        t = np.clip(((xs - ax) * dx + (ys - ay) * dy) / length2, 0.0, 1.0)
+        d = np.hypot(xs - (ax + t * dx), ys - (ay + t * dy))
+    inner = radius * hardness
+    # Fully painted inside the hard core, linear falloff to 0 at the brush edge.
+    return np.clip((radius - d) / max(radius - inner, 0.5), 0.0, 1.0).astype(np.float32)
+
+
+def paint_strokes(alpha: np.ndarray, strokes: list[dict]) -> np.ndarray:
+    """Apply brush strokes in order. Each stroke: ``{"mode": "add" | "erase",
+    "size": diameter_px, "hardness": 0..1, "points": [[x, y], ...]}`` in image pixels.
+
+    Within one stroke the coverage is the maximum over its segments, so overlapping
+    dabs don't build up; successive strokes compose like layers of paint.
+    """
+    if not strokes:
+        return alpha
+    out = alpha.astype(np.float32, copy=True)
+    h, w = out.shape
+    for st in strokes:
+        pts = st.get("points") or []
+        if not pts:
+            continue
+        radius = max(0.5, min(float(st.get("size", 20)), BRUSH_LIMIT) / 2)
+        hardness = min(max(float(st.get("hardness", 0.8)), 0.0), 1.0)
+        target = 0.0 if st.get("mode") == "erase" else 1.0
+        arr = np.asarray(pts, dtype=np.float64).reshape(-1, 2)
+        pad = radius + 1
+        x0 = int(max(0, np.floor(arr[:, 0].min() - pad)))
+        x1 = int(min(w, np.ceil(arr[:, 0].max() + pad)))
+        y0 = int(max(0, np.floor(arr[:, 1].min() - pad)))
+        y1 = int(min(h, np.ceil(arr[:, 1].max() + pad)))
+        if x0 >= x1 or y0 >= y1:
+            continue
+        cov = np.zeros((y1 - y0, x1 - x0), np.float32)
+        segments = list(zip(arr[:-1], arr[1:], strict=True)) if len(arr) > 1 else [(arr[0], arr[0])]
+        for a, b in segments:
+            # Only the pixels near this segment: its bounding box grown by the radius.
+            sx0 = int(max(x0, np.floor(min(a[0], b[0]) - pad)))
+            sx1 = int(min(x1, np.ceil(max(a[0], b[0]) + pad)))
+            sy0 = int(max(y0, np.floor(min(a[1], b[1]) - pad)))
+            sy1 = int(min(y1, np.ceil(max(a[1], b[1]) + pad)))
+            if sx0 >= sx1 or sy0 >= sy1:
+                continue
+            ys, xs = np.mgrid[sy0:sy1, sx0:sx1]
+            c = _segment_coverage(xs + 0.5, ys + 0.5, a, b, radius, hardness)
+            view = cov[sy0 - y0 : sy1 - y0, sx0 - x0 : sx1 - x0]
+            np.maximum(view, c, out=view)
+        region = out[y0:y1, x0:x1]
+        region += (target - region) * cov
+    return out
 
 
 def _dilate_step(x: torch.Tensor, square: bool) -> torch.Tensor:

@@ -67,6 +67,17 @@
       <h2 class="side-title" data-i18n="side.examples">Examples</h2>
       <div id="examples" class="examples"></div>
       <h2 class="side-title" data-i18n="side.history">History</h2>
+      <div class="history-tools">
+        <span id="storage-size"></span>
+        <span id="history-clear-box">
+          <button type="button" class="link-btn" id="history-clear" data-i18n="history.clear"></button>
+          <span id="history-confirm" hidden>
+            <span id="history-confirm-text"></span>
+            <button type="button" class="link-btn danger" id="history-yes" data-i18n="history.yes"></button>
+            <button type="button" class="link-btn" id="history-no" data-i18n="history.no"></button>
+          </span>
+        </span>
+      </div>
       <div id="history" class="history"><p class="empty" data-i18n="history.empty"></p></div>
     </section>
   </aside>
@@ -251,6 +262,34 @@
           <div class="range-scale" aria-hidden="true"><span>−25</span><span>0</span><span>+25</span></div>
           <p class="hint" data-i18n="mask.grow.hint"></p>
         </div>
+        <div class="field" id="feather-field">
+          <label for="q-feather"><span data-i18n="mask.feather"></span> <output id="o-feather"></output></label>
+          <input type="range" id="q-feather" min="0" max="25" step="0.5" data-i18n-title="mask.feather.title">
+        </div>
+      </details>
+
+      <!-- Brush -->
+      <details class="group" open id="brush-group">
+        <summary><span data-i18n="brush.title"></span> <span class="brush-count" id="brush-count"></span> <span class="tag-live" data-i18n="tag.live" data-i18n-title="tag.live.title"></span></summary>
+        <div class="seg seg-full" role="radiogroup" id="brush-mode">
+          <button role="radio" data-value="off" data-i18n="brush.off"></button>
+          <button role="radio" data-value="add" data-i18n="brush.add" data-i18n-title="brush.add.title"></button>
+          <button role="radio" data-value="erase" data-i18n="brush.erase" data-i18n-title="brush.erase.title"></button>
+        </div>
+        <div class="field">
+          <label for="brush-size"><span data-i18n="brush.size"></span> <output id="o-brush-size"></output></label>
+          <input type="range" id="brush-size" min="2" max="400" step="1">
+        </div>
+        <div class="field">
+          <label for="brush-hardness"><span data-i18n="brush.hardness"></span> <output id="o-brush-hardness"></output></label>
+          <input type="range" id="brush-hardness" min="0" max="100" step="1">
+        </div>
+        <div class="brush-actions">
+          <button type="button" class="btn btn-quiet" id="brush-undo" data-i18n="brush.undo" data-i18n-title="brush.undo.title"></button>
+          <button type="button" class="btn btn-quiet" id="brush-redo" data-i18n="brush.redo" data-i18n-title="brush.redo.title"></button>
+          <button type="button" class="link-btn" id="brush-clear" data-i18n="brush.clear"></button>
+        </div>
+        <p class="hint" data-i18n-html="brush.hint"></p>
       </details>
 
       <!-- Edge colors -->

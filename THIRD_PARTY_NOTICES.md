@@ -73,6 +73,12 @@ check those terms yourself.
 Space <https://huggingface.co/spaces/ZhengPeng7/BiRefNet_demo>. They belong to their
 authors and are used only for local testing; they are not included in this repository.
 
+## README screenshot
+
+The photo in `docs/assets/screenshot.jpg` is by [Zoltan Tasi](https://unsplash.com/@zoltantasi),
+published on Unsplash (<https://unsplash.com/photos/TsB03tz5030>) under the
+[Unsplash License](https://unsplash.com/license).
+
 ## Python dependencies
 
 Installed by the package manager, not bundled: PyTorch and torchvision (BSD-3-Clause),

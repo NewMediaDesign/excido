@@ -205,6 +205,7 @@ def cmd_remove(a: argparse.Namespace) -> int:
         "threshold": a.threshold,
         "invert": a.invert,
         "grow": a.grow,
+        "feather": a.feather,
         "refine": not a.no_refine,
         "refine_r1": a.r1,
         "refine_r2": a.r2,
@@ -339,6 +340,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--threshold", type=float, default=0.5)
     s.add_argument("--invert", action="store_true", help="keep the background, drop the subject")
     s.add_argument("--grow", type=float, default=0.0, help="expand (+) or contract (-) the selection, in pixels (0.5 steps)")
+    s.add_argument("--feather", type=float, default=0.0, help="soften the mask edge, in pixels")
     s.add_argument("--no-refine", action="store_true", help="disable refine_foreground")
     s.add_argument("--r1", type=int, default=90, help="refine_foreground wide radius")
     s.add_argument("--r2", type=int, default=6, help="refine_foreground fine radius")

@@ -1,6 +1,6 @@
 [project]
 name = "excido"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local, open-source background removal studio powered by BiRefNet"
 readme = "README.md"
 license = "MIT"

@@ -4,10 +4,12 @@
 
 Excido is a local background-removal studio built on [BiRefNet](https://github.com/ZhengPeng7/BiRefNet), the state of the art in high-resolution dichotomous image segmentation (Zheng Peng et al., CAAI AIR 2024). The model runs on your own GPU or CPU and the interface opens in your browser. Your images never leave your computer.
 
-<p align="center"><img src="docs/assets/screenshot.jpg" width="100%" alt="Excido web app: before/after view of a bicycle cut out from its background"></p>
+<p align="center"><img src="docs/assets/screenshot.jpg" width="100%" alt="Excido web app: before/after view of a cyclist and a road bike cut out from the background (photo: Zoltan Tasi, Unsplash)"></p>
+<p align="center"><sub>Photo by <a href="https://unsplash.com/@zoltantasi?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Zoltan Tasi</a> on <a href="https://unsplash.com/photos/TsB03tz5030?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Unsplash</a></sub></p>
 
 - **Web app.** It has a before/after slider, a cutout on a checkerboard, mask and overlay views, zoom and pan, history, batch processing with ZIP export, and an English/Italian interface.
-- **Every runtime setting.** You control resolution, precision, device, threshold, grow/shrink of the selection in half-pixel steps, edge clean-up (`refine_foreground`), background and export format ([docs/PARAMETERS.md](docs/PARAMETERS.md)).
+- **Every runtime setting.** You control resolution, precision, device, threshold, grow/shrink of the selection in half-pixel steps, feather, edge clean-up (`refine_foreground`), background and export format ([docs/PARAMETERS.md](docs/PARAMETERS.md)).
+- **Mask brush.** You can fix the selection by hand: add or erase with an adjustable size and hardness, with undo and redo. Strokes reach every export, the PSD included.
 - **16 official BiRefNet variants.** General, HR, Lite, Dynamic, Matting, Portrait and the paper models are all available. Seven are downloaded at setup, the rest with one click ([docs/MODELS.md](docs/MODELS.md)).
 - **MCP server.** Claude and other MCP clients can remove backgrounds for you, inside a folder you choose ([docs/MCP.md](docs/MCP.md)).
 - **Layered PSD export.** The subject comes with an editable layer mask, plus the hidden original and the background.
@@ -78,17 +80,23 @@ The wrappers `.\run.ps1` and `bash run.sh` start the app the same way.
 1. **Open an image.** Click an example, drop a file anywhere, paste one with <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>V</kbd> or enter a URL.
 2. The model processes it, and the result appears with the **before/after slider**.
 3. **Adjust the settings on the right.**
-   - The **live** sections (Mask, Edge colors, Background, Export) update instantly.
+   - The **live** sections (Mask, Brush, Edge colors, Background, Export) update instantly.
    - The **run** sections (Model, Resolution, Performance) need a new run: the button changes to *Re-run to apply*.
-4. **Download** the cutout (PNG/WebP with transparency, or a composite), the mask, or a **layered PSD** with an editable layer mask.
-5. **Batch.** In the Batch tab you can process many images at once and download a ZIP.
+4. **Touch up** where the model missed. In the **Brush** panel, choose **Add** or **Erase** and paint on the image.
+5. **Download** the cutout (PNG/WebP with transparency, or a composite), the mask, or a **layered PSD** with an editable layer mask.
+6. **Batch.** In the Batch tab you can process many images at once and download a ZIP.
+
+Results stay in the **history** on the left. The × on a row deletes that result, and **Clear history** deletes them all after an inline confirmation. The space they take in `outputs/` is shown above the list.
 
 | Key | Action |
 |---|---|
 | <kbd>1</kbd>–<kbd>5</kbd> | Before/After, Cutout, Mask, Overlay, Side by side |
-| <kbd>Space</kbd> (hold) | Show the original |
+| <kbd>Space</kbd> (hold) | Show the original (pans while painting) |
 | <kbd>F</kbd> / <kbd>0</kbd> | Fit / 100% |
 | wheel, drag, double-click | Zoom, pan, fit |
+| <kbd>B</kbd> / <kbd>E</kbd> / <kbd>Esc</kbd> | Brush: add / erase / off |
+| <kbd>[</kbd> / <kbd>]</kbd> | Smaller / larger brush |
+| <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> | Undo / redo a stroke |
 | <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd> | Run (or start the batch) |
 
 ## Command line
@@ -99,6 +107,10 @@ uv run excido remove photos/ --out results/ --model general-hr
 
 ```bash
 uv run excido remove photo.jpg --background "#ffffff" --format webp
+```
+
+```bash
+uv run excido remove portrait.jpg --grow 1.5 --feather 2 --psd
 ```
 
 ```bash

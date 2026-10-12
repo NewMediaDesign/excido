@@ -27,7 +27,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from . import EXAMPLES_DIR, GALLERY_DIR, OUTPUTS_DIR, PACKAGE_DIR, __version__, catalog, store
 from . import postprocess as pp
 from .engine import Engine, EngineError, InferParams, resolve_device
-from .runs import BACKGROUNDS_DIR, RunStore, export_psd, new_id, render, safe_stem
+from .runs import BACKGROUNDS_DIR, RUNS_DIR, RunStore, edit, export_psd, new_id, render, safe_stem
 
 STATIC_DIR = PACKAGE_DIR / "static"
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".tif", ".tiff"}
@@ -241,13 +241,16 @@ def api_examples():
 # ------------------------------------------------- services (shared with the MCP server)
 
 
-def segment_bytes(data: bytes, name: str, params: dict | None, post: dict | None) -> dict:
-    """Run the model on an encoded image, store the run, render it. Returns the run description."""
+def segment_bytes(data: bytes, name: str, params: dict | None, post: dict | None, edits: list | None = None) -> dict:
+    """Run the model on an encoded image, store the run, render it. Returns the run description.
+
+    ``edits`` (brush strokes) carry over when re-running the model on a previous run's image.
+    """
     post = post or {}
     ip = InferParams.from_dict(params)
     image, fmt, rotated = open_image(data)
     masks, info = engine.predict([image], ip)
-    run = runs.create(name, image.convert("RGB"), None if rotated else data, fmt, masks[0], info)
+    run = runs.create(name, image.convert("RGB"), None if rotated else data, fmt, masks[0], info, edits)
     with engine.lock:
         return render(run, pp.PostParams.from_dict(post), info["device"], load_background(post.get("bg_image_id")))
 
@@ -292,11 +295,13 @@ def api_segment(
     params: str | None = Form(None),
     post: str | None = Form(None),
 ):
+    edits = None
     if file is not None:
         data, name = read_upload(file), file.filename or "upload"
     elif source and source.startswith("run:"):
         path = resolve_local(source)
-        data, name = path.read_bytes(), runs.get(source[4:]).name
+        previous = runs.get(source[4:])
+        data, name, edits = path.read_bytes(), previous.name, previous.edits
     elif source:
         path = resolve_local(source)
         data, name = path.read_bytes(), path.name
@@ -304,7 +309,7 @@ def api_segment(
         data, name = fetch_url(url.strip())
     else:
         raise EngineError("no_image", "No image: upload a file, pick an example or enter a URL.")
-    return segment_bytes(data, name, parse_json(params), parse_json(post))
+    return segment_bytes(data, name, parse_json(params), parse_json(post), edits)
 
 
 @app.post("/api/runs/{run_id}/postprocess")
@@ -332,6 +337,43 @@ def api_psd(run_id: str, lang: str = "en"):
     except KeyError:
         raise HTTPException(404, "Run not found") from None
     return FileResponse(path, media_type="image/vnd.adobe.photoshop", filename=filename)
+
+
+@app.post("/api/runs/{run_id}/edits")
+def api_edits(run_id: str, body: dict):
+    """Brush strokes on the mask: ``{"op": "add" | "undo" | "redo" | "clear", "stroke": {...}, "post": {...}}``."""
+    try:
+        run = runs.get(run_id)
+    except KeyError:
+        raise HTTPException(404, "Run not found") from None
+    post = body.get("post") or run.post
+    try:
+        edit(run, str(body.get("op", "")), body.get("stroke"))
+    except (ValueError, TypeError) as e:
+        raise HTTPException(400, str(e)) from None
+    device = resolve_device(run.info.get("device", "auto"))
+    with engine.lock:
+        return render(run, pp.PostParams.from_dict(post), device, load_background(post.get("bg_image_id")))
+
+
+@app.delete("/api/runs/{run_id}")
+def api_delete_run(run_id: str):
+    if not runs.delete(run_id):
+        raise HTTPException(404, "Run not found")
+    return {"deleted": run_id}
+
+
+@app.delete("/api/runs")
+def api_clear_runs():
+    return {"deleted": runs.clear()}
+
+
+@app.get("/api/storage")
+def api_storage():
+    """Disk space used by the results (history, batch ZIPs, backgrounds)."""
+    files = [f for f in OUTPUTS_DIR.rglob("*") if f.is_file()] if OUTPUTS_DIR.exists() else []
+    runs_count = sum(1 for d in RUNS_DIR.iterdir() if d.is_dir()) if RUNS_DIR.exists() else 0
+    return {"bytes": sum(f.stat().st_size for f in files), "runs": runs_count, "folder": str(OUTPUTS_DIR)}
 
 
 @app.get("/api/runs")

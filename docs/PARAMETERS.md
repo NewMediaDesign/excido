@@ -63,12 +63,37 @@ The author quotes 3.5 GB (FP16) and 4.8 GB (FP32) at 1024²; those are process-r
 | `threshold` | 0–1 | 0.5 | Cut-off for `binary`; raising it makes the subject tighter. |
 | `invert` | yes / no | no | Inverts the mask: keeps the background and drops the subject. |
 | `grow` | −100…+100 px, steps of 0.5 (1 in binary mode) | 0 | Expands (+) or contracts (−) the selection. Soft edges keep their profile and move as a whole, so hair stays soft. 1–3 px cleans background halos or recovers thin parts. |
+| `feather` | 0–100 px, steps of 0.5 | 0 | Softens the mask edge with a Gaussian blur of this radius. |
 
 The official code applies no threshold: the soft mask is BiRefNet's native output.
+
+The order is fixed: threshold → invert → grow/shrink → feather → brush strokes.
 
 **How grow/shrink works.** It applies grayscale dilation (grow) or erosion (shrink) to the alpha. The steps alternate a 4-neighbour cross and a 3×3 square, which approximates a disk, so the edge moves by the same distance in every direction: exactly 1 px along the axes for `±1`. A half-pixel value blends the two nearest whole radii.
 
 It runs after threshold and invert, so a positive value always enlarges what is kept. The web UI shows it as a slider from −25 to +25 px, with −/+ buttons, a typed value (also beyond ±25) and ↑ ↓ keys (Shift multiplies the step by 10). Double-clicking the slider resets it to 0.
+
+**Feather.** The radius is the sigma of the Gaussian, so the transition is about twice the radius on each side of the edge. It runs after grow/shrink: grow by a few pixels, then feather, to get a soft edge that doesn't eat into the subject. From 6 px up, the blur runs on a downscaled mask and is scaled back up, so even 100 px costs a fraction of a second. The web UI slider goes from 0 to 25 px; the API, the CLI (`--feather`) and the MCP tools accept up to 100.
+
+## Brush (live)
+
+The brush fixes the selection by hand where the model got it wrong: paint **Add** to bring back a missed part, **Erase** to drop a leftover piece of background.
+
+| Setting | Values | Default | Effect |
+|---|---|---|---|
+| mode | off · add · erase | off | While a mode is on, dragging on the image paints instead of panning. |
+| size | 2–400 px in the UI (up to 2000 through the API) | 40 | Brush diameter in **image** pixels, so a stroke covers the same area at any zoom. |
+| hardness | 0–100% | 80% | 100% is a hard disk; lower values fade the brush from its inner core to the rim. |
+
+Keyboard shortcuts: <kbd>B</kbd> add, <kbd>E</kbd> erase, <kbd>Esc</kbd> off, <kbd>[</kbd> <kbd>]</kbd> smaller/larger, <kbd>Space</kbd>+drag (or the middle button) pans while painting, <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd> undo, <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> or <kbd>Ctrl</kbd>+<kbd>Y</kbd> redo. Painting needs a single image under the pointer, so turning the brush on switches the before/after and side-by-side views to the overlay.
+
+How the strokes are kept:
+- Strokes are applied **in order, on top of** threshold, invert, grow and feather, so later strokes win and changing a slider never loses them.
+- They are saved with the result (`meta.json`), with undo and redo; **Clear strokes** removes them all.
+- Re-running the model on the same image (for example with another model or resolution) **carries the strokes over**.
+- They reach every output: cutout, mask, overlay and the layered PSD.
+
+Through the API, `POST /api/runs/{id}/edits` takes `{"op": "add", "stroke": {"mode": "add" | "erase", "size": 40, "hardness": 0.8, "points": [[x, y], …]}}`, or `{"op": "undo" | "redo" | "clear"}`. Coordinates are in pixels of the original image; a stroke holds at most 20,000 points.
 
 ## Edge colors: `refine_foreground` (live)
 

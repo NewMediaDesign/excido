@@ -6,6 +6,28 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-13
+
+### Added
+
+- **Mask brush.**
+  - Paint to add to or erase from the selection, with an adjustable size (in image pixels) and hardness.
+  - Undo, redo and clear, with keyboard shortcuts: <kbd>B</kbd>, <kbd>E</kbd>, <kbd>Esc</kbd>, <kbd>[</kbd> <kbd>]</kbd>, <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd>, and <kbd>Space</kbd>+drag to pan while painting.
+  - Strokes are applied on top of the mask settings and are saved with the result. They carry over when you re-run the model on the same image, and reach the cutout, the mask and the layered PSD.
+- **Feather.** Softens the mask edge with a Gaussian blur of 0–100 px, applied after grow/shrink. It is available in the web UI, the API, `excido remove --feather` and the MCP tools.
+- **History management.**
+  - Delete a single result, or clear the whole history after an inline confirmation.
+  - The disk space used by `outputs/` is shown above the list.
+- **New API endpoints.** `POST /api/runs/{id}/edits`, `DELETE /api/runs/{id}`, `DELETE /api/runs` and `GET /api/storage`.
+
+### Changed
+
+- New README screenshot, made with a photo by Zoltan Tasi on Unsplash. The credit is in `THIRD_PARTY_NOTICES.md`.
+
+### Fixed
+
+- At startup, the loaded-model chip showed the model id (`general-hr`) instead of its name until the next refresh.
+
 ## [0.1.0] - 2026-10-13
 
 First public version.

@@ -339,6 +339,7 @@ Precision = Annotated[str, Field(description="fp16 (fast, default), bf16 or fp32
 Device = Annotated[str, Field(description="auto, cuda, mps or cpu.")]
 MaskMode = Annotated[str, Field(description="'soft' keeps a continuous alpha (hair, transparency); 'binary' cuts at the threshold.")]
 Threshold = Annotated[float, Field(description="Cut-off for binary masks (0-1).", ge=0, le=1)]
+Feather = Annotated[float, Field(description="Soften the mask edge by this many pixels (Gaussian, 0 = off).", ge=0, le=100)]
 Grow = Annotated[
     float,
     Field(
@@ -372,12 +373,13 @@ def build_server(settings: Settings | None = None, backend: LocalBackend | HttpB
 
     mcp = MCPServer(name="excido", title="Excido", version=__version__, instructions=INSTRUCTIONS)
 
-    def post_params(mask_mode, threshold, invert, grow, refine, background, output_format) -> dict:
+    def post_params(mask_mode, threshold, invert, grow, feather, refine, background, output_format) -> dict:
         post = {
             "mask_mode": mask_mode,
             "threshold": threshold,
             "invert": invert,
             "grow": grow,
+            "feather": feather,
             "refine": refine,
             "export_format": output_format,
         }
@@ -471,6 +473,7 @@ def build_server(settings: Settings | None = None, backend: LocalBackend | HttpB
         threshold: Threshold = 0.5,
         invert: Annotated[bool, Field(description="Keep the background and remove the subject.")] = False,
         grow: Grow = 0.0,
+        feather: Feather = 0.0,
         refine: Annotated[bool, Field(description="Clean background halos from soft edges (refine_foreground).")] = True,
         background: Background = "transparent",
         output_format: OutputFormat = "png",
@@ -482,7 +485,7 @@ def build_server(settings: Settings | None = None, backend: LocalBackend | HttpB
         foreground pixels. Use preview=true to see the result."""
         data, name, source = load_input(image)
         params = {"model": model, "max_side": max_side, "precision": precision, "device": device, **_resolution(resolution)}
-        post = post_params(mask_mode, threshold, invert, grow, refine, background, output_format)
+        post = post_params(mask_mode, threshold, invert, grow, feather, refine, background, output_format)
 
         def work():
             return save_outputs(be().segment(data, name, params, post), source, preview, psd)
@@ -505,6 +508,7 @@ def build_server(settings: Settings | None = None, backend: LocalBackend | HttpB
         threshold: Threshold = 0.5,
         invert: bool = False,
         grow: Grow = 0.0,
+        feather: Feather = 0.0,
         refine: bool = True,
         background: Background = "transparent",
         output_format: OutputFormat = "png",
@@ -520,7 +524,7 @@ def build_server(settings: Settings | None = None, backend: LocalBackend | HttpB
         if not paths:
             raise ToolError("No images to process.")
         params = {"model": model, "max_side": max_side, "precision": precision, "device": device, **_resolution(resolution)}
-        post = post_params(mask_mode, threshold, invert, grow, refine, background, output_format)
+        post = post_params(mask_mode, threshold, invert, grow, feather, refine, background, output_format)
 
         def work():
             results, errors = [], []
@@ -541,6 +545,7 @@ def build_server(settings: Settings | None = None, backend: LocalBackend | HttpB
         threshold: Threshold = 0.5,
         invert: bool = False,
         grow: Grow = 0.0,
+        feather: Feather = 0.0,
         refine: bool = True,
         background: Background = "transparent",
         output_format: OutputFormat = "png",
@@ -548,7 +553,7 @@ def build_server(settings: Settings | None = None, backend: LocalBackend | HttpB
         psd: Psd = False,
     ) -> CallToolResult:
         """Re-render a previous result with new mask/background settings without running the model again (fast)."""
-        post = post_params(mask_mode, threshold, invert, grow, refine, background, output_format)
+        post = post_params(mask_mode, threshold, invert, grow, feather, refine, background, output_format)
 
         def work():
             desc = be().recompose(run_id, post)
