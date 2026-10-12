@@ -4,6 +4,8 @@
 
 Excido is a local background-removal studio built on [BiRefNet](https://github.com/ZhengPeng7/BiRefNet), the state of the art in high-resolution dichotomous image segmentation (Zheng Peng et al., CAAI AIR 2024). The model runs on your own GPU or CPU and the interface opens in your browser. Your images never leave your computer.
 
+<p align="center"><img src="docs/assets/screenshot.jpg" width="100%" alt="Excido web app: before/after view of a bicycle cut out from its background"></p>
+
 - **Web app.** It has a before/after slider, a cutout on a checkerboard, mask and overlay views, zoom and pan, history, batch processing with ZIP export, and an English/Italian interface.
 - **Every runtime setting.** You control resolution, precision, device, threshold, grow/shrink of the selection in half-pixel steps, edge clean-up (`refine_foreground`), background and export format ([docs/PARAMETERS.md](docs/PARAMETERS.md)).
 - **16 official BiRefNet variants.** General, HR, Lite, Dynamic, Matting, Portrait and the paper models are all available. Seven are downloaded at setup, the rest with one click ([docs/MODELS.md](docs/MODELS.md)).
@@ -167,6 +169,7 @@ demo/              your own test images, shown as a second gallery (optional, no
 | Variable | Effect |
 |---|---|
 | `EXCIDO_HOME` | Data folder for models, examples and outputs. The default is the project folder (or `~/.excido` when installed as a package). |
+| `EXCIDO_MODELS_DIR` | Where models are stored (default `<EXCIDO_HOME>/models`), e.g. on a bigger disk. |
 | `EXCIDO_GALLERY` | Folder shown as the second gallery (default `demo/`). |
 | `EXCIDO_VRAM_FRACTION` | Hard cap on GPU memory, between 0 and 1 (see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)). |
 | `EXCIDO_MCP_ROOT` | MCP workspace folder (default `~/Pictures/Excido`). |
@@ -197,7 +200,7 @@ uv run ruff check
 uv run ruff format
 ```
 
-CI runs lint, the test suite and a real CPU inference with the Lite model on Windows, Linux and macOS. See [CONTRIBUTING.md](CONTRIBUTING.md).
+CI runs lint, the test suite and a real CPU inference with the Lite model on Windows, Linux and macOS. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md). Report security problems privately as described in [SECURITY.md](SECURITY.md).
 
 ## License and credits
 

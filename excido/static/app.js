@@ -452,9 +452,12 @@ async function refreshSystem() {
   const gpu = main.id !== "cpu";
   const dev = $("#chip-device");
   dev.className = `chip ${gpu ? "ok" : "warn"}`;
+  // Short name in the chip ("RTX 4070 Laptop"), full name in the tooltip.
+  const shortName = main.name.replace(/^NVIDIA\s+(GeForce\s+)?/i, "").replace(/\s+GPU$/i, "");
   dev.querySelector("span").textContent = gpu
-    ? `${main.name}${main.id === "cuda" && s.cuda_version ? ` · CUDA ${s.cuda_version}` : ""}`
+    ? `${shortName}${main.id === "cuda" && s.cuda_version ? ` · CUDA ${s.cuda_version}` : ""}`
     : `${t("chip.cpuOnly")} · ${main.name}`;
+  dev.title = `${t("chip.device.title")}: ${main.name}`;
   $("#chip-vram span").textContent = s.memory_total_mb ? `${gpu ? deviceLabel(main.id) : "RAM"} ${fmtGB(s.memory_used_mb)} / ${fmtGB(s.memory_total_mb)}` : `torch ${s.torch}`;
   const mc = $("#chip-model");
   if (s.loaded) {

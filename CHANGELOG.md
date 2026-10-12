@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-10-12
+## [0.1.0] - 2026-10-13
 
 First public version.
 
@@ -26,7 +26,7 @@ First public version.
   - Streamable HTTP at `/mcp` inside the web app, plus `excido mcp` over stdio.
   - The tools are sandboxed to a workspace folder (default `~/Pictures/Excido`).
   - Image URLs and model downloads are opt-in.
-- **`excido` command.** Subcommands `serve`, `setup`, `download`, `examples`, `remove`, `mcp` and `smoke`.
+- **`excido` command.** Subcommands `serve`, `setup`, `download`, `examples`, `remove`, `mcp` and `smoke`. Configuration through environment variables (`EXCIDO_HOME`, `EXCIDO_MODELS_DIR`, `EXCIDO_GALLERY`, `EXCIDO_MCP_ROOT`, …).
 - **Safety.**
   - A hard VRAM cap prevents the slow Windows "sysmem fallback".
   - DNS-rebinding protection covers the whole app.
