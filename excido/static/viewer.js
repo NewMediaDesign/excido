@@ -1,15 +1,23 @@
 // Image viewer with zoom/pan and five modes:
 // compare (before/after slider), cutout (checkerboard), mask, overlay, side (side by side).
+// With a brush set, dragging paints a stroke (previewed on a canvas) instead of panning;
+// Space+drag or the middle button still pan.
 import { t } from "./i18n.js";
 
 const MIN_SCALE = 0.02;
 const MAX_SCALE = 16;
 
 export class Viewer {
-  constructor(stage, frame, { onZoom } = {}) {
+  constructor(stage, frame, { onZoom, onStroke } = {}) {
     this.stage = stage;
     this.frame = frame;
     this.onZoom = onZoom || (() => {});
+    this.onStroke = onStroke || (() => {});
+    this.brush = null; // { mode: "add" | "erase", size, hardness } while painting is on
+    this.spacePan = false;
+    this.preview = null; // canvas on top of the image, in image pixels
+    this.ring = el("div", { class: "brush-ring", hidden: "" });
+    stage.append(this.ring);
     this.data = null; // { original, cutout, mask, overlay, width, height }
     this.mode = "compare";
     this.scale = 1;
@@ -64,6 +72,19 @@ export class Viewer {
     const [before, after] = this.tags?.children || [];
     if (before) before.textContent = t("stage.before");
     if (after) after.textContent = t("stage.after");
+  }
+
+  /** Turn painting on ({mode, size, hardness}) or off (null). */
+  setBrush(brush) {
+    this.brush = brush;
+    this.stage.classList.toggle("painting", !!brush);
+    if (!brush) this.ring.hidden = true;
+    else this.ring.dataset.mode = brush.mode;
+    this._sizeRing();
+  }
+
+  clearPreview() {
+    this.preview?.getContext("2d").clearRect(0, 0, this.preview.width, this.preview.height);
   }
 
   clear() {
@@ -162,6 +183,14 @@ export class Viewer {
       content.style.gap = `${this._gap()}px`;
       content.append(this._layer("original"), this._layer("cutout", { checker: true }));
     }
+    // Stroke preview canvas, on top of the image (single-image modes only).
+    this.preview = null;
+    if (content.classList.contains("layer")) {
+      this.preview = el("canvas", { class: "brush-preview" });
+      this.preview.width = d.width;
+      this.preview.height = d.height;
+      content.append(this.preview);
+    }
     this.frame.replaceChildren(content);
   }
 
@@ -171,7 +200,31 @@ export class Viewer {
     for (const layer of this.frame.querySelectorAll(".layer")) {
       layer.classList.toggle("pixelated", this.scale >= 2);
     }
+    this._sizeRing();
     this.onZoom(this.scale);
+  }
+
+  _sizeRing() {
+    if (!this.brush) return;
+    const px = Math.max(4, this.brush.size * this.scale);
+    this.ring.style.width = this.ring.style.height = `${px}px`;
+  }
+
+  _toImage(e) {
+    const r = this.stage.getBoundingClientRect();
+    return [(e.clientX - r.left - this.tx) / this.scale, (e.clientY - r.top - this.ty) / this.scale];
+  }
+
+  _drawSegment(a, b) {
+    const ctx = this.preview?.getContext("2d");
+    if (!ctx) return;
+    ctx.lineCap = ctx.lineJoin = "round";
+    ctx.lineWidth = this.brush.size;
+    ctx.strokeStyle = this.brush.mode === "erase" ? "rgba(255, 92, 64, 0.55)" : "rgba(141, 182, 242, 0.55)";
+    ctx.beginPath();
+    ctx.moveTo(a[0], a[1]);
+    ctx.lineTo(b[0] + 0.01, b[1]);
+    ctx.stroke();
   }
 
   // ───────────────────────── interaction ─────────────────────────
@@ -189,16 +242,39 @@ export class Viewer {
     }, { passive: false });
 
     st.addEventListener("pointerdown", (e) => {
-      if (!this.data || e.button !== 0) return;
+      if (!this.data || (e.button !== 0 && e.button !== 1)) return;
       st.focus({ preventScroll: true });
-      const onHandle = e.target.closest(".split-handle");
+      if (this.brush && this.preview && e.button === 0 && !this.spacePan) {
+        e.preventDefault();
+        const p = this._toImage(e);
+        drag = { kind: "paint", points: [p], last: p };
+        st.setPointerCapture(e.pointerId);
+        this._drawSegment(p, p);
+        return;
+      }
+      const onHandle = e.button === 0 && !this.brush && e.target.closest(".split-handle");
       drag = { kind: onHandle ? "split" : "pan", x: e.clientX, y: e.clientY, tx: this.tx, ty: this.ty };
       st.setPointerCapture(e.pointerId);
       if (drag.kind === "pan") st.classList.add("panning");
       else this._moveSplit(e.clientX);
     });
     st.addEventListener("pointermove", (e) => {
+      if (this.brush) {
+        const r = st.getBoundingClientRect();
+        this.ring.hidden = false;
+        this.ring.style.left = `${e.clientX - r.left}px`;
+        this.ring.style.top = `${e.clientY - r.top}px`;
+      }
       if (!drag) return;
+      if (drag.kind === "paint") {
+        const p = this._toImage(e);
+        // Keep points about 1/8 of the brush apart: smooth strokes, small payloads.
+        if (Math.hypot(p[0] - drag.last[0], p[1] - drag.last[1]) < Math.max(1, this.brush.size / 8)) return;
+        this._drawSegment(drag.last, p);
+        drag.points.push(p);
+        drag.last = p;
+        return;
+      }
       if (drag.kind === "split") return this._moveSplit(e.clientX);
       this.tx = drag.tx + (e.clientX - drag.x);
       this.ty = drag.ty + (e.clientY - drag.y);
@@ -206,12 +282,16 @@ export class Viewer {
       this._apply();
     });
     const end = () => {
+      if (drag?.kind === "paint" && this.brush) {
+        this.onStroke({ mode: this.brush.mode, size: this.brush.size, hardness: this.brush.hardness, points: drag.points });
+      }
       drag = null;
       st.classList.remove("panning");
     };
+    st.addEventListener("pointerleave", () => { this.ring.hidden = true; });
     st.addEventListener("pointerup", end);
     st.addEventListener("pointercancel", end);
-    st.addEventListener("dblclick", () => this.fit());
+    st.addEventListener("dblclick", () => { if (!this.brush) this.fit(); });
   }
 
   _moveSplit(clientX) {

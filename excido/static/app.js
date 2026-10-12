@@ -13,7 +13,7 @@ const DEFAULT_INFER = {
   oom_fallback: "error", mask_interp: "bilinear", batch_size: 1,
 };
 const DEFAULT_POST = {
-  mask_mode: "soft", threshold: 0.5, invert: false, grow: 0, refine: true, refine_r1: 90, refine_r2: 6,
+  mask_mode: "soft", threshold: 0.5, invert: false, grow: 0, feather: 0, refine: true, refine_r1: 90, refine_r2: 6,
   background: "transparent", bg_color: "#ffffff", bg_blur: 20, export_format: "png", bg_image_id: null,
 };
 const STORE_KEY = "excido.params.v1";
@@ -31,7 +31,10 @@ const state = {
   busy: false,
   batch: { items: [], job: null, seq: 0, lastJob: null },
   downloads: {}, // model_id -> job
+  brush: { mode: "off", size: 40, hardness: 0.8 }, // size in image pixels
+  storage: null, // { bytes, runs } of outputs/
 };
+const BRUSH_KEY = "excido.brush.v1";
 
 function loadSaved() {
   try {
@@ -39,6 +42,8 @@ function loadSaved() {
     if (saved?.infer) Object.assign(state.infer, pick(saved.infer, DEFAULT_INFER));
     if (saved?.post) Object.assign(state.post, pick(saved.post, DEFAULT_POST));
     if (saved?.bg) state.bg = saved.bg;
+    const brush = JSON.parse(localStorage.getItem(BRUSH_KEY) || "null");
+    if (brush) Object.assign(state.brush, { size: brush.size ?? 40, hardness: brush.hardness ?? 0.8 });
   } catch { /* storage unavailable: defaults */ }
 }
 function save() {
@@ -103,6 +108,7 @@ const effectiveDevice = () => (state.infer.device === "auto" || !state.system?.d
 
 const viewer = new Viewer($("#stage"), $("#frame"), {
   onZoom: (s) => { $("#zoom-value").textContent = `${Math.round(s * 100)}%`; },
+  onStroke: (stroke) => sendEdit({ op: "add", stroke }),
 });
 
 // ───────────────────────── controls ─────────────────────────
@@ -188,6 +194,7 @@ function bindControls() {
   $("#grow-minus").addEventListener("click", () => setGrow(state.post.grow - Number($("#q-grow").step)));
   $("#grow-plus").addEventListener("click", () => setGrow(state.post.grow + Number($("#q-grow").step)));
   $("#q-refine").addEventListener("change", (e) => { state.post.refine = e.target.checked; onPost(); });
+  bindRange("q-feather", state.post, "feather", onPost, { fmt: (v) => `${v} px` });
   bindRange("q-refine_r1", state.post, "refine_r1", onPost);
   bindRange("q-refine_r2", state.post, "refine_r2", onPost);
   bindSeg("q-background", state.post, "background", onPost);
@@ -282,6 +289,7 @@ function syncPostUI() {
   $("#q-grow").value = Math.min(25, Math.max(-25, q.grow));
   $("#q-grow-num").value = (q.grow > 0 ? "+" : "") + q.grow.toFixed(1);
   $("#grow-field").classList.toggle("grow-active", q.grow !== 0);
+  syncRange("q-feather", "feather", q.feather, (v) => `${v} px`);
   $("#q-refine").checked = q.refine;
   syncRange("q-refine_r1", "refine_r1", q.refine_r1);
   syncRange("q-refine_r2", "refine_r2", q.refine_r2);
@@ -520,6 +528,8 @@ function renderHistory() {
   }
   root.replaceChildren();
   for (const r of state.history) {
+    const row = document.createElement("div");
+    row.className = "history-row";
     const b = document.createElement("button");
     b.className = "history-item" + (state.current?.id === r.id ? " current" : "");
     const info = r.info || {};
@@ -529,8 +539,114 @@ function renderHistory() {
     b.querySelector(".hname").textContent = r.name;
     b.querySelector(".hmeta").textContent = `${info.model_label || info.model} · ${size ? size.join("×") : ""} · ${fmtMs(info.timings_ms?.inference)}`;
     b.addEventListener("click", () => openRun(r));
-    root.append(b);
+    const del = document.createElement("button");
+    del.className = "hdel";
+    del.textContent = "×";
+    del.title = t("history.delete");
+    del.setAttribute("aria-label", t("history.delete"));
+    del.addEventListener("click", () => deleteRun(r.id));
+    row.append(b, del);
+    root.append(row);
   }
+}
+
+async function refreshStorage() {
+  try { state.storage = await api("/api/storage"); } catch { return; }
+  renderStorage();
+}
+
+function renderStorage() {
+  const st = state.storage;
+  $("#storage-size").textContent = st ? `${fmtGB(Math.round(st.bytes / 2 ** 20))} · ${tn("history.count", st.runs)}` : "";
+  $("#history-clear").hidden = !state.history.length;
+}
+
+function forgetCurrent() {
+  state.current = null;
+  viewer.clear();
+  $("#stage-empty").hidden = false;
+  $("#metrics").innerHTML = `<span class="metric-empty">${t("metrics.empty")}</span>`;
+  updateDownloads();
+  updateBrushUI();
+  updateRunButton();
+}
+
+async function deleteRun(id) {
+  try {
+    await api(`/api/runs/${id}`, { method: "DELETE" });
+  } catch (err) { return toastError(err); }
+  state.history = state.history.filter((r) => r.id !== id);
+  if (state.current?.id === id) forgetCurrent();
+  renderHistory();
+  refreshStorage();
+}
+
+async function clearHistory() {
+  try {
+    const res = await api("/api/runs", { method: "DELETE" });
+    toast(t("history.cleared", { n: res.deleted }), { kind: "ok" });
+  } catch (err) { return toastError(err); }
+  state.history = [];
+  forgetCurrent();
+  renderHistory();
+  refreshStorage();
+}
+
+// ───────────────────────── brush ─────────────────────────
+
+function saveBrush() {
+  try { localStorage.setItem(BRUSH_KEY, JSON.stringify({ size: state.brush.size, hardness: state.brush.hardness })); } catch {}
+}
+
+function setBrushMode(mode) {
+  if (mode !== "off" && !state.current) mode = "off";
+  state.brush.mode = mode;
+  // Painting needs a single image under the pointer: leave the slider / side-by-side views.
+  const active = $("#view-modes button[aria-checked='true']")?.dataset.mode;
+  if (mode !== "off" && (active === "compare" || active === "side")) setViewMode("overlay");
+  viewer.setBrush(mode === "off" ? null : { mode, size: state.brush.size, hardness: state.brush.hardness });
+  updateBrushUI();
+}
+
+function updateBrushUI() {
+  const b = state.brush;
+  syncSeg("brush-mode", b.mode);
+  syncRange("brush-size", "brush-size", b.size, (v) => `${v} px`);
+  syncRange("brush-hardness", "brush-hardness", Math.round(b.hardness * 100), (v) => `${v}%`);
+  const d = state.current;
+  const count = d?.edits_count || 0;
+  $("#brush-count").textContent = count ? tn("brush.count", count) : "";
+  $("#brush-undo").disabled = !count;
+  $("#brush-redo").disabled = !d?.redo_count;
+  $("#brush-clear").hidden = !count;
+  for (const btn of $$("#brush-mode button")) btn.disabled = !d && btn.dataset.value !== "off";
+}
+
+let editChain = Promise.resolve();
+/** Send brush operations one at a time, in order (strokes can be drawn faster than they render). */
+function sendEdit(body) {
+  const d = state.current;
+  if (!d) return;
+  editChain = editChain.then(async () => {
+    $("#post-busy").hidden = false;
+    try {
+      const desc = await postJSON(`/api/runs/${d.id}/edits`, { ...body, post: state.post });
+      if (state.current?.id !== desc.id) return;
+      state.current = desc;
+      await viewer.updateSources({ cutout: desc.urls.cutout, mask: desc.urls.mask, overlay: desc.urls.overlay });
+      viewer.clearPreview();
+      updateDownloads();
+      renderMetrics();
+      updateBrushUI();
+      state.history = state.history.map((r) => (r.id === desc.id ? desc : r));
+      renderHistory();
+    } catch (err) {
+      viewer.clearPreview();
+      toastError(err);
+    } finally {
+      $("#post-busy").hidden = true;
+    }
+  });
 }
 
 function openRun(desc, { restorePost = true } = {}) {
@@ -573,6 +689,7 @@ async function runSingle(input, label = "") {
     showRun(desc);
     state.history = [desc, ...state.history.filter((r) => r.id !== desc.id)];
     renderHistory();
+    refreshStorage();
     if (desc.info?.fallback) toast(t("m.fallback"));
   } catch (err) {
     toastError(err);
@@ -593,6 +710,8 @@ function showRun(desc) {
   updateDownloads();
   renderMetrics();
   renderHistory();
+  updateBrushUI();
+  if (state.brush.mode !== "off") setBrushMode(state.brush.mode);
   updateRunButton();
 }
 
@@ -958,7 +1077,25 @@ function bindGlobal() {
   const typing = (e) => e.target.closest?.("input, select, textarea");
   document.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); onRun(); return; }
+    if ((e.ctrlKey || e.metaKey) && !typing(e) && state.view === "single" && state.current) {
+      const k = e.key.toLowerCase();
+      if (k === "z" && !e.shiftKey) { e.preventDefault(); sendEdit({ op: "undo" }); return; }
+      if ((k === "z" && e.shiftKey) || k === "y") { e.preventDefault(); sendEdit({ op: "redo" }); return; }
+    }
     if (typing(e) || e.ctrlKey || e.metaKey || e.altKey || state.view !== "single") return;
+    const brushKeys = { b: "add", e: "erase", escape: "off" };
+    const bk = brushKeys[e.key.toLowerCase()];
+    if (bk) {
+      setBrushMode(state.brush.mode === bk && bk !== "off" ? "off" : bk);
+      return;
+    }
+    if (e.key === "[" || e.key === "]") {
+      state.brush.size = Math.min(400, Math.max(2, Math.round(state.brush.size * (e.key === "]" ? 1.2 : 1 / 1.2))));
+      saveBrush();
+      if (state.brush.mode !== "off") setBrushMode(state.brush.mode);
+      else updateBrushUI();
+      return;
+    }
     const modes = { 1: "compare", 2: "cutout", 3: "mask", 4: "overlay", 5: "side" };
     if (modes[e.key]) setViewMode(modes[e.key]);
     else if (e.key === "f" || e.key === "F") viewer.fit();
@@ -967,12 +1104,42 @@ function bindGlobal() {
     else if (e.key === "-") viewer.zoomBy(0.8);
     else if (e.code === "Space" && !e.target.closest?.("button, summary, a")) {
       e.preventDefault();
-      if (!e.repeat) { viewer.peek(true); $("#peek-badge").hidden = !state.current; }
+      if (state.brush.mode !== "off") viewer.spacePan = true; // Space+drag pans while painting
+      else if (!e.repeat) { viewer.peek(true); $("#peek-badge").hidden = !state.current; }
     }
   });
   document.addEventListener("keyup", (e) => {
-    if (e.code === "Space") { viewer.peek(false); $("#peek-badge").hidden = true; }
+    if (e.code === "Space") { viewer.spacePan = false; viewer.peek(false); $("#peek-badge").hidden = true; }
   });
+
+  // Brush controls
+  $("#brush-mode").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-value]");
+    if (b && !b.disabled) setBrushMode(b.dataset.value);
+  });
+  $("#brush-size").addEventListener("input", (e) => {
+    state.brush.size = Number(e.target.value);
+    saveBrush();
+    if (state.brush.mode !== "off") setBrushMode(state.brush.mode); else updateBrushUI();
+  });
+  $("#brush-hardness").addEventListener("input", (e) => {
+    state.brush.hardness = Number(e.target.value) / 100;
+    saveBrush();
+    if (state.brush.mode !== "off") setBrushMode(state.brush.mode); else updateBrushUI();
+  });
+  $("#brush-undo").addEventListener("click", () => sendEdit({ op: "undo" }));
+  $("#brush-redo").addEventListener("click", () => sendEdit({ op: "redo" }));
+  $("#brush-clear").addEventListener("click", () => sendEdit({ op: "clear" }));
+
+  // History: clear with an inline confirmation
+  const confirmBox = (on) => {
+    $("#history-confirm").hidden = !on;
+    $("#history-clear").hidden = on || !state.history.length;
+    $("#history-confirm-text").textContent = t("history.confirm", { n: state.history.length });
+  };
+  $("#history-clear").addEventListener("click", () => confirmBox(true));
+  $("#history-no").addEventListener("click", () => confirmBox(false));
+  $("#history-yes").addEventListener("click", () => { confirmBox(false); clearHistory(); });
 
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshSystem(); });
   setInterval(() => { if (!document.hidden && !state.busy) refreshSystem(); }, 8000);
@@ -990,11 +1157,12 @@ async function init() {
     await refreshSystem();
     await refreshModels();
     syncInferUI();
-    await Promise.all([refreshExamples(), refreshHistory()]);
+    await Promise.all([refreshExamples(), refreshHistory(), refreshStorage()]);
   } catch (err) {
     toastError(err);
   }
   updateRunButton();
+  updateBrushUI();
 
   // Open in a working state: the latest result, or the first official example.
   if (state.history.length) {
