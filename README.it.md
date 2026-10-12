@@ -4,6 +4,8 @@
 
 Excido è uno strumento locale per scontornare le immagini, basato su [BiRefNet](https://github.com/ZhengPeng7/BiRefNet), lo stato dell'arte nella segmentazione dicotomica ad alta risoluzione (Zheng Peng et al., CAAI AIR 2024). Il modello gira sulla tua GPU o CPU e l'interfaccia si apre nel browser. Le immagini non escono mai dal tuo computer.
 
+<p align="center"><img src="docs/assets/screenshot.jpg" width="100%" alt="App web di Excido: vista prima/dopo di una bicicletta scontornata"></p>
+
 - **App web.** Ha uno slider prima/dopo, il ritaglio su scacchiera, le viste maschera e overlay, zoom e pan, cronologia, batch con esportazione ZIP e interfaccia in inglese e italiano.
 - **Tutti i parametri a runtime.** Controlli risoluzione, precisione, dispositivo, soglia, espansione/contrazione della selezione a mezzo pixel, pulizia dei bordi (`refine_foreground`), sfondo e formato ([docs/it/PARAMETRI.md](docs/it/PARAMETRI.md)).
 - **16 varianti ufficiali di BiRefNet.** Ci sono General, HR, Lite, Dynamic, Matting, Portrait e i modelli del paper. Sette si scaricano durante il setup, le altre con un clic ([docs/it/MODELLI.md](docs/it/MODELLI.md)).
@@ -169,6 +171,7 @@ demo/              tue immagini di prova, seconda galleria (facoltativa, esclusa
 | Variabile | Effetto |
 |---|---|
 | `EXCIDO_HOME` | Cartella dei dati: modelli, esempi, risultati. Di default è il progetto (o `~/.excido` se installato come pacchetto). |
+| `EXCIDO_MODELS_DIR` | Dove salvare i modelli (default `<EXCIDO_HOME>/models`), per esempio su un disco più capiente. |
 | `EXCIDO_GALLERY` | Cartella mostrata come seconda galleria (default `demo/`). |
 | `EXCIDO_VRAM_FRACTION` | Limite alla memoria GPU, tra 0 e 1 (vedi [docs/it/ARCHITETTURA.md](docs/it/ARCHITETTURA.md)). |
 | `EXCIDO_MCP_ROOT` | Cartella di lavoro MCP (default `~/Pictures/Excido`). |

@@ -28,7 +28,8 @@ def _default_root() -> Path:
 
 
 ROOT = _default_root()
-MODELS_DIR = ROOT / "models"
+# Models can live elsewhere (e.g. a bigger disk) while results stay in ROOT.
+MODELS_DIR = Path(os.environ.get("EXCIDO_MODELS_DIR") or ROOT / "models").expanduser().resolve()
 EXAMPLES_DIR = ROOT / "examples"
 OUTPUTS_DIR = ROOT / "outputs"
 # Extra folder of your own test images, shown as a second gallery in the UI.
